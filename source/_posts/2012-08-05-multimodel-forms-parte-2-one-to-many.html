@@ -1,0 +1,108 @@
+---
+layout: post
+title: "MultiModel forms, parte 2: One-To-Many"
+date: 2012-08-05
+comments: true
+categories:
+ - Rails
+---
+
+<div class='post'>
+<!-- MORE -->
+Este post é o segundo de uma série de quatro artigos:
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li>Parte 4: Nested Forms dinâmicos usando Knockout.js</li>
+</ul>
+O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+<h2>Nested Models - One-to-Many</h2>
+Segue o modelo utilizado neste tutorial:
+<ul>
+  <li><span style="color: #666666;">Person has one UserAccount (parte 1)</span></li>
+  <li><span style="color: blue;"><b>UserAccount has many Permissions (parte 2)</b></span></li>
+</ul>
+
+Conforme estabelecido na parte 1 desta série, queremos editar UserAccount a partir do model Person. Nesta segunda parte,
+veremos como editar também a partir do model Person a associação one-to-many UserAccount / Permissions. O modelo de permissões será bem simples:
+``` ruby
+rails g model Permission user_account_id:integer restricted_area:string grants:string
+rake db:migrate
+```
+<p>Por fim, resta configurar as validações e relacionamentos nos respectivos models.</p>
+
+<h3>Nested One-to-Many</h3>
+É necessário adicionar uma cláusula has_many em UserAccount, para que esta possa navegar na associação um-para-muitos.
+Também é necessário configurar UserAccount para aceitar os atributos da associação Permission.
+``` ruby
+class UserAccount < ActiveRecord::Base
+  attr_accessible :password, :username, :permissions_attributes
+  validates_presence_of :username, :password, :person
+  belongs_to :person
+  has_many :permissions, inverse_of: :user_account
+  accepts_nested_attributes_for :permissions, allow_destroy: true
+end
+```
+
+Permission possui a chave estrangeira user_account_id (lado belongs_to).
+``` ruby
+class Permission < ActiveRecord::Base
+  attr_accessible :restricted_area
+  validates_presence_of :user_account, :restricted_area, :grants
+  belongs_to :user_account
+end
+```
+
+Façamos alguns testes no console do Rails:
+``` ruby
+u = UserAccount.first
+UserAccount Load (0.2ms) SELECT "user_accounts".* FROM "user_accounts" LIMIT 1
+ => #<UserAccount id: 1, person_id: 1, username: "jsilva", password: "abc123", created_at: "2012-08-05 04:02:34", updated_at: "2012-08-05 04:02:34">
+
+u.update_attributes permissions_attributes: [ { restricted_area: :admin, grants: "Read-Write" }, { restricted_area: :backup, grants: "Read-Only" } ]
+ (0.3ms) begin transaction
+ Person Load (0.3ms) SELECT "people".* FROM "people" WHERE "people"."id" = 1 LIMIT 1
+ UserAccount Load (0.2ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."id" = 1 LIMIT 1
+ UserAccount Load (0.1ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."id" = 1 LIMIT 1
+ SQL (12.6ms) INSERT INTO "permissions" ("created_at", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["grants", "Read-Write"], ["restricted_area", :admin], ["updated_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["user_account_id", 1]]
+ SQL (0.2ms) INSERT INTO "permissions" ("created_at", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["grants", "Read-Only"], ["restricted_area", :backup], ["updated_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["user_account_id", 1]]
+ (58.7ms) commit transaction
+```
+
+No exemplo acima, permissões foram adicionadas a uma conta existente de usuário. É possível ir além: todos os dados de UserAccount e Permission podem ser diretamente manipulados um nível acima, numa chamada de Person:<br />
+
+``` ruby
+p = Person.create name: "João Oliveira", user_account_attributes: {
+  username: "joliv", password: "secret", permissions_attributes: [
+    { restricted_area: "admin", grants: "Read-Write" },
+    { restricted_area: "backups", grants: "Read-Only" }
+  ]
+}
+ (0.1ms) begin transaction
+ (0.0ms) commit transaction
+ (0.1ms) begin transaction
+ SQL (36.8ms) INSERT INTO "people" ("created_at", "name", "updated_at") VALUES (?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["name", "João Oliveira"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00]]
+ SQL (0.6ms) INSERT INTO "user_accounts" ("created_at", "password", "person_id", "updated_at", "username") VALUES (?, ?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["password", "secret"], ["person_id", 3], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["username", "joliv"]]
+ SQL (0.4ms) INSERT INTO "permissions" ("created_at", "grants", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["grants", "Read-Write"], ["restricted_area", "admin"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["user_account_id", 3]]
+ SQL (0.2ms) INSERT INTO "permissions" ("created_at", "grants", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["grants", "Read-Only"], ["restricted_area", "backups"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["user_account_id", 3]]
+ (71.4ms) commit transaction
+```
+  <p>
+    Aprecie o poder deste recurso: uma simples linha de comando, e numa única transação são persistidos 4 objetos: Person, UserAccount e duas Permission. Não pára por aí.
+    Este poder é ainda mais amplo, visto que Rails fornece helpers para construção de formulários com nested models - tema que será abordado na parte 3 desta série.
+  </p>
+  <h3>Referências</h3>
+  <ul>
+    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
+        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
+    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
+        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
+    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
+    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
+        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
+    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
+        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
+  </ul>
+</div>

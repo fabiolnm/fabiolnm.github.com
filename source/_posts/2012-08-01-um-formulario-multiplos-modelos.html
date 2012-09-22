@@ -1,0 +1,204 @@
+---
+layout: post
+title: "Um formulário, multiplos modelos: a praticidade dos MultiModel Forms"
+date: 2012-08-01
+comments: true
+categories:
+ - Rails
+---
+
+<div class='post'>
+  MultiModel forms são um poderoso recurso oferecido pelo Rails desde a <a href="http://guides.rubyonrails.org/2_3_release_notes.html#nested-object-forms" rel="nofollow" target="_blank">versão 2.3</a> - porém desconhecido de muitos programadores. Com eles, é possível editar complexas hierarquias de objetos numa única view. É uma situação que nos deparamos com bastante freqüência:<br />
+<!-- MORE -->
+  <ul>
+    <li>Editar Carrinho de Compras e Itens do Carrinho</li>
+    <li>Dados de uma Pessoa e Informações de Contato</li>
+    <li>Dados de um Usuário e Permissões.</li>
+    <li>Post num blog e suas Tags.</li>
+  </ul>
+  e por aí vai. Este post é o primeiro de uma série de quatro artigos, para ilustrar a utilização destes recursos:
+  <ul>
+    <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+    <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+    <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+    <li>Parte 4: Nested Forms dinâmicos usando Knockout.js</li>
+  </ul>
+  O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+  <h2>Nested Models - One-to-One</h2>
+  Segue o modelo utilizado neste tutorial:
+  <ul>
+    <li><b><span style="color: blue;">Person has one UserAccount</span></b></li>
+    <li><span style="color: #666666;">UserAccount has many Permissions (parte 2)</span></li>
+  </ul>
+  Em nome da simplicidade, Person será criado via scaffolding:
+``` ruby
+rails g scaffold Person name:string
+```
+  Neste ponto, pode-se rodar as migrations e iniciar o servidor de desenvolvimento:
+``` ruby
+rake db:migrate
+rails s
+```
+  <p>E já estará disponível a tela - bastante rudimentar - para a edição de Person no localhost: http://localhost:3000/people.</p>
+
+  <p>Como queremos editar UserAccount a partir do model Person, dispensaremos scaffold, sendo necessário criar o respectivo modelo:</p>
+``` ruby
+rails g model UserAccount person_id:integer username:string password:string
+rake db:migrate
+```
+  <p>Por fim, resta configurar as validações e relacionamentos nos respectivos models.</p>
+
+  <h3>Nested One-to-One</h3>
+  A relação entre os modelos Person e UserAccount é de um-para-um, sendo que UserAccount possui a chave estrangeira person_id (lado belongs_to):
+``` ruby app/models/person.rb
+class Person < ActiveRecord::Base
+  attr_accessible :name
+
+  validates_presence_of :name
+  has_one :user_account
+end
+```
+
+``` ruby app/models/user_account.rb
+class UserAccount < ActiveRecord::Base
+  attr_accessible :password, :username
+
+  validates_presence_of :username, :password
+  belongs_to :person
+end
+```
+
+Podemos usar o rails console para um teste inicial:
+``` ruby
+rails c
+p = Person.create name: "José da Silva"
+(0.1ms)  begin transaction
+SQL (16.4ms) INSERT INTO "people" ("created_at", "name", "updated_at") VALUES (?, ?, ?)  [["created_at", Tue, 31 Jul 2012 05:57:41 UTC +00:00], ["name", "José da Silva"], ["updated_at", Tue, 31 Jul 2012 05:57:41 UTC +00:00]]
+(59.6ms)  commit transaction
+```
+No exemplo acima, foi criado um objeto Person, passando para o método create um hash contendo apenas o atributo name.
+
+O uso de nested models possibilita que a chamada create receba também os atributos username e password, para criar uma UserAccount simultaneamente ao objeto Person.<br />
+``` ruby
+class Person < ActiveRecord::Base
+  attr_accessible :name, :user_account_attributes
+  validates_presence_of :name
+
+  has_one :user_account
+  accepts_nested_attributes_for :user_account
+end
+```
+
+Note que é necessário tornar esses atributos acessíveis via mass-assignment, na lista <b><span style="color: orange;">attr_accessible</span></b>.
+``` ruby
+p = Person.create name: "José da Silva", user_account_attributes: { username: "jsilva", password: "abc123" }
+(0.1ms)  begin transaction
+(0.1ms)  commit transaction
+(0.0ms)  begin transaction
+SQL (6.1ms)  INSERT INTO "people" ("created_at", "name", "updated_at") VALUES (?, ?, ?)  [["created_at", Tue, 31 Jul 2012 06:23:26 UTC +00:00], ["name", "José da Silva"], ["updated_at", Tue, 31 Jul 2012 06:23:26 UTC +00:00]]
+SQL (0.4ms)  INSERT INTO "user_accounts" ("created_at", "password", "person_id", "updated_at", "username") VALUES (?, ?, ?, ?, ?)  [["created_at", Tue, 31 Jul 2012 06:23:26 UTC +00:00], ["password", "abc123"], ["person_id", 5], ["updated_at", Tue, 31 Jul 2012 06:23:26 UTC +00:00], ["username", "jsilva"]]
+(56.6ms)  commit transaction
+```
+<h3>Validação</h3>
+O leitor mais atento pode ter notado que UserAccount não está validando a presença de Person. Isto deixa uma brecha no código, por permitir a criação de uma UserAccount desassociada de uma pessoa:<br />
+``` ruby
+UserAccount.create username: "joao", password: "abc123"
+(0.2ms)  begin transaction
+SQL (1.4ms)  INSERT INTO "user_accounts" ("created_at", "password", "person_id", "updated_at", "username") VALUES (?, ?, ?, ?, ?)  [["created_at", Tue, 31 Jul 2012 06:25:34 UTC +00:00], ["password", "abc123"], ["person_id", nil], ["updated_at", Tue, 31 Jul 2012 06:25:34 UTC +00:00], ["username", "joao"]]<br />
+(33.3ms)  commit transaction
+```
+  Porém isto não faz sentido no nosso modelo. Façamos a correção:
+``` ruby
+class UserAccount < ActiveRecord::Base
+  attr_accessible :password, :username
+
+  validates_presence_of :person, :username, :password
+  belongs_to :person
+end
+```
+Agora UserAccount passa se comportar conforme esperado:
+``` ruby
+u = UserAccount.create username: "a", password: "b"
+(0.2ms)  begin transaction
+(0.1ms)  rollback transaction
+
+u.errors.messages
+=> {:person=>["can't be blank"]}
+```
+Porém, isto tem um efeito colateral: ela afeta a criação da user_account via nested attributes de Person:
+``` ruby
+p = Person.create name: "José da Silva", user_account_attributes: { username: "jsilva", password: "abc123" }
+(0.1ms)  begin transaction
+(0.1ms)  commit transaction
+(0.1ms)  begin transaction
+(0.1ms)  rollback transaction
+
+p.errors.messages
+=> {:"user_account.person"=>["can't be blank"]}
+```
+
+Para evitar que ocorra a validação quando são usados nested attributes, deve-se informar
+na associação user_account para que não seja validado o atributo person, o que é feito via <b>inverse_of</b>:
+``` ruby
+class Person < ActiveRecord::Base
+  attr_accessible :name, :user_account_attributes
+  validates_presence_of :name
+
+  has_one :user_account, inverse_of: :person
+  accepts_nested_attributes_for :user_account
+end
+```
+<h3>Update</h3>
+Para uma operação de atualização, é necessário passar em user_account_attributes o id da user_account previamente criada:
+``` ruby
+p.update_attributes user_account_attributes: { id:6, username: "jsilva11", password: "123456" }
+(0.1ms)  begin transaction
+(0.6ms)  UPDATE "user_accounts" SET "username" = 'jsilva11', "updated_at" = '2012-07-31 07:43:20.649645' WHERE "user_accounts"."id" = 6
+(49.9ms)  commit transaction
+```
+  <p>
+    <b><span style="color: red;">CUIDADO</span></b>: caso o id fosse omitido,
+    seria feito um novo insert na tabela user_accounts, e o objeto Person seria reassociado à nova user_account.
+  </p>
+
+<h3>Destroy</h3>
+Para completar este tutorial, suponhamos que faça sentido remover uma user_account, sem remover os respectivos dados de person. Isto pode ser obtido marcando o nested_model com allow_destroy:
+``` ruby
+class Person < ActiveRecord::Base
+  attr_accessible :name, :user_account_attributes
+
+  validates_presence_of :name
+  has_one :user_account, inverse_of: :person
+
+  accepts_nested_attributes_for :user_account, allow_destroy: true
+end
+```
+Agora, pode-se remover user_account passando <span style="color: orange;"><b>_destroy: true</b></span> no hash user_account_attributes:
+
+``` ruby
+p.update_attributes user_account_attributes: { id:6, _destroy: true }
+(0.2ms) begin transaction
+UserAccount Load (0.1ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."person_id" = 7 LIMIT 1
+SQL (4.9ms) DELETE FROM "user_accounts" WHERE "user_accounts"."id" = ? [["id", 6]]
+(47.8ms) commit transaction
+
+p.reload.user_account
+Person Load (0.3ms) SELECT "people".* FROM "people" WHERE "people"."id" = ? LIMIT 1 [["id", 7]]
+UserAccount Load (1.9ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."person_id" = 7 LIMIT 1
+=> nil
+```
+
+  <h4>Referências</h4>
+  <ul>
+    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
+        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
+    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
+        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
+    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
+    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
+        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
+    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
+        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
+  </ul>
+</div>
