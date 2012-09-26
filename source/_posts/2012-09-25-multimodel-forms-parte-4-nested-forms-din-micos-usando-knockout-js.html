@@ -1,0 +1,398 @@
+---
+layout: post
+title: "MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js"
+date: 2012-09-25
+comments: true
+categories:
+ - Rails
+ - Knockout.js
+---
+<div class='post'>
+<p>
+  No terceiro post desta série, foi mostrado que os FormBuilders do Rails são capazes de lidar com Nested Models para
+  a criação de formulários estáticos. Este post apresenta uma maneira client-side interativa de gerar campos Nested Forms.
+</p>
+<!-- MORE -->
+
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-knockout-js" target="_blank">Parte 4: Nested Forms dinâmicos usando Knockout.js</a></li>
+</ul>
+
+<p>O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.</p>
+
+<p>
+  Nos posts anteriores desta série, foi mostrado como fazer uso dos Nested Models e Nested Forms,
+  recursos poderosos que o Rails oferece para a edição de entidades relacionadas.
+</p>
+<p>
+  Partindo de um domínio composto por três entidades - Person, User e Permissions - foi mostrado que,
+  numa única chamada person.create(attrs) - onde attrs é um hash contendo atributos dos três modelos obedecendo
+  a uma notação especial - o Rails consegue criar os diferentes objetos que compõem a associação.
+</p>
+<p>
+  Por sua vez, os FormBuilders do Rails podem fazer uso de Nested Models, permitindo prototipar Nested Forms que podem
+  manipular simultaneamente vários objetos relacionados entre si. Neste quarto e último post, será usado o framework
+  Knockout.js para a construção de formulários interativos baseados no Nested Forms.
+</p>
+
+<h2>Knockout.js</h2>
+<p>
+  O Knockout.js é um framework JavaScript que implementa o padrão MVVM (Model-View View-Model). Possui uma documentação
+  didática e abrangente - incluindo um <a href="http://learn.knockoutjs.com/">tutorial interativo</a>!
+</p>
+<p>O exercício deste post será reimplementar a tela abaixo</p>
+<center><img src="/images/2012/08/06/destroy.png" /></center>
+<p>Para que as permissões possam ser adicionadas / removidas de forma interativa:</p>
+<center><img src="/images/2012/09/25/01-form-interativo.png" /></center>
+
+<h3>Knockout.js Setup</h3>
+<h4>Asset Pipeline</h4>
+<p>Graças à gem knockoutjs-rails, o setup é tão simples quanto adicionar uma gem ao projeto:</p>
+``` ruby Gemfile
+...
+gem 'knockoutjs-rails', git: "git://github.com/fabiolnm/knockoutjs-rails.git"
+...
+```
+<p>e duas diretivas ao manifesto do asset pipeline:</p>
+``` ruby app/assets/javascripts/application.js
+...
+//= require knockout
+//= require knockout.mapping
+...
+```
+<h4>Via tradicional</h4>
+<p>
+  Caso não esteja usando o asset pipeline, segundo as
+  <a href="http://knockoutjs.com/documentation/installation.html">instruções de instalação</a>,
+  pode-se referenciar a biblioteca via CDNs, ou baixar os arquivos em algum diretório do projeto
+  onde possam ser incluídos via diretiva <% javascript_include_tag %>.
+</p>
+
+<h3>ViewModels, Observables e Bindings</h3>
+<p>
+  ViewModels são representações que encapsulam um modelo e suas interações com a view.
+  Um ViewModel pode possuir atributos Observable: a View atualiza-se automagicamente em resposta a alterações nestes atributos.
+  A view também consegue alterar o estado do modelo através dos métodos do view_model.
+</p>
+<p>
+  No exemplo abaixo, PermissionListViewModel encapsula um Lista de Permissões (modelo) num <i>array observável</i>,
+  e disponibiliza métodos add e empty para que a View possa interagir com o modelo.
+</p>
+``` javascript app/assets/javascripts/people.js
+function PermissionListViewModel() {
+  this.permissions = ko.observableArray();
+
+  this.add = function() {
+    this.permissions.add({});
+  }
+
+  this.empty = function() {
+    return this.permissions().length == 0;
+  }
+}
+```
+<p>
+  Note que o ViewModel não possui referência nenhuma aos elementos da View.
+  Toda a ligação é feita de forma declarativa, por meio de data-bindings:
+</p>
+``` html app/views/people/_form.html.erb
+<table id="permissions_table">
+  <caption>Permissões</caption>
+  <thead date-bind="ifnot: permissions().length == 0">
+    <tr><th>Nível</th><th>Liberações</th><th>Remover</th></tr>
+  </thead>
+  <tbody data-bind="foreach: permissions">
+    <tr>
+      <td><select>
+        <option></option>
+        <option>Admin</option>
+        <option>Logs</option>
+        <option>Backup</option>
+      </select></td>
+      <td><select>
+        <option></option>
+        <option>Read-Only</option>
+        <option>Read-Write</option>
+        <option>Read-Write-Delete</option>
+      </select></td>
+      <td><input type="checkbox" /></td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="3">
+        <p data-bind="if: empty()">
+          Clique em Adicionar para conceder permissões.
+        </p>
+        <button data-bind="click: add">Adicionar</button>
+      </th>
+    </tr>
+  </tfoot>
+</table>
+```
+<p>Os bindings são aplicados na chamada ko.applyBindings, que liga um ViewModel às declarações de bindings feitas em um elemento da página:</p>
+```
+<script>
+  var view_model = new PermissionListViewModel();
+  var permissions_table = document.getElementById("#permissions_table");
+  ko.applyBindings(view_model, permissions_table);
+</script>
+```
+<p>
+  Nas linhas 3 e 26, são declarados bindings condicionais:
+  <ul>
+    <li>binding <strong>ifnot</strong>: quando a lista de permissões NÃO estiver vazia, o cabeçalho da tabela é exibido.
+    </li>
+    <li>binding <strong>if</strong>: quando o método viewmodel.empty() retornar true, um parágrafo de instruções é exibido.</li>
+  </ul>
+  <center><img src="/images/2012/09/25/02-lista-permissoes-vazia.png" /></center>
+  Note que podem ser contruídos bindings tanto com expressões (mostrado no binding ifnot) e com métodos do viewmodel (mostrado no binding if).
+</p>
+<p>
+  Na linha 6, é declarado um binding foreach: para cada elemento do array viewmodel.permissions, a view
+  renderiza uma linha na tabela, segundo o template fornecido no corpo de tbody (elemento em que foi feito o binding).
+</p>
+<p>
+  Na linha 29, é declarado um binding click: quando o botão for clicado, o método viewmodel.add é chamado.
+  A view se atualiza automagicamente em resposta à adição de um elemento no array observável, omitindo as
+  instruções iniciais (de quando o array está vazio) e adicionando campos na tabela, para cada adição realizada.
+</p>
+<center><img src="/images/2012/09/25/03-adicionar-permissoes.png" /></center>
+<h3>Bindings de Campos de Formulários</h3>
+<p>O próximo passo é fazer o binding dos campos em cada linha da tabela.</p>
+<h4>Remoção de elementos com checkboks e _destroy binding</h4>
+<p>
+  No <a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">terceiro post</a> desta série,
+  foi mostrado que o rails remove objetos de associações que possuam um atributo _destroy avaliado como true.
+  <a href="http://knockoutjs.com/documentation/observableArrays.html" target="_blank">Influenciado por este comportamento do Rails</a>,
+  o binding foreach omite automaticamente os objetos de um observable array quem tenham um atributo _destroy avaliado como true.
+  Sabendo-se disso, basta adicionar um <strong>checked binding</strong> no checkbox:
+</p>
+``` html Checked binding com valor _destroy, para remoção de elementos da tabela
+<input type="checkbox" data-bind="checked: _destroy" />
+```
+<p>Também é necessário inicializar um atributo _destroy: false, em cada objeto adicionado ao array.</p>
+``` javascript app/assets/javascripts/people.js
+this.add = function() {
+  this.permissions.push({
+    _destroy: false
+  });
+}
+```
+<p>
+  Ao clicar no checkbox de uma linha, ela é removida da tabela. Porém surge um comportamento anômalo: quando a tabela fica vazia,
+  o cabeçalho da tabela continua sendo mostrado. O comportamento consistente seria omití-lo e voltar a exibir a instrução
+  de quando o array está vazio.
+</p>
+<p>
+  Isto ocorre pois os elementos não são efetivamente removidos do array - apenas ficam marcados com o atributo _destroy: true.
+  É necessário reescrever o método empty: permissions não está vazia quando pelo menos um elemento no array avalia _destroy como false.
+</p>
+``` javascript Correção do método empty
+this.empty = function() {
+  var permissions = this.permissions();
+  for (i = 0; i < permissions.length; i++)
+    if (!permissions[i]._destroy)
+        return false;
+  return true;
+}
+```
+<p>
+  Outra abordagem para a remoção de elementos é mantê-los visíveis na tabela, mas com um estilo indicando que foram marcados para
+  remoção. Eu particularmente prefiro esta abordagem, pois dá a oportunidade para o usuário de desfazer uma remoção acidental.
+  Para esta abordagem, deve-se reescrever o binding foreach, adicionando um atributo includeDestroyed.
+</p>
+``` html
+<tbody data-bind="foreach: { data: permissions, includeDestroyed: true }">
+```
+<p>Para marcar as linhas removidas, pode-se utilizar um binding style:</p>
+``` html
+<tr data-bind="style: { backgroundColor: _destroy ? 'salmon' : 'white' }">
+```
+<p>
+  Ou, para não misturar estilos com markup, um binding css.
+  A diferença é que este último adiciona uma classe ao elemento, caso a expressão de binding seja avaliada como verdadeira.
+</p>
+``` html
+<tr data-bind="css: { removed_row: _destroy }">
+```
+``` css app/assets/stylesheets/people.css.scss
+.removed_row {
+  background-color: salmon
+}
+
+```
+<p>Notar que, na abordagem de manter visíveis os elementos destroyed, é necessário reverter a implementação inicial do método empty.</p>
+<center><img src="/images/2012/09/25/04-foreach-include-destroyed.png" /></center>
+</div>
+
+<h4>Binding de Select boxes</h4>
+<p>
+  Revendo a listagem do formulário, pode-se perceber que os campos de select já são bastante verbosos, mesmo com um número pequeno de opções.
+  Podemos usar o binding options para deixar o código mais limpo:
+</p>
+``` html app/views/people/_form.html.erb
+<table id="permissions_table">
+  <caption>Permissões</caption>
+  <thead date-bind="ifnot: permissions().length == 0">
+    <tr><th>Áreas</th><th>Acessos</th><th>Remover</th></tr>
+  </thead>
+  <tbody data-bind="foreach: { data: permissions, includeDestroyed: true }">
+    <tr data-bind="css: { removed_row: _destroy }">
+      <td><select data-bind="options: $root.areas, optionsCaption: 'Choose...'"></select></td>
+      <td><select data-bind="options: $root.grants, optionsCaption: 'Choose...',
+          optionsText: 'grant', optionsValue: 'value'"></select></td>
+      <td><input type="checkbox" data-bind="checked: _destroy" /></td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="3">
+        <p data-bind="if: empty()">
+          Clique em Adicionar para conceder permissões.
+        </p>
+        <button data-bind="click: add">Adicionar</button>
+      </th>
+    </tr>
+  </tfoot>
+</table>
+```
+<p>Movendo as opções para PermissionsListViewModel:</p>
+``` javascript
+function PermissionListViewModel() {
+  this.permissions = ko.observableArray();
+
+  this.areas = [ "admin", "backups", "logs" ];
+
+  this.grants = [
+    {  grant: "Read-Only", value: "R" },
+    {  grant: "Read-Write", value: "RW" },
+    {  grant: "Read-Write-Delete", value: "RWD" }
+  ];
+  ...
+}
+```
+<p>
+  Note que as opções podem ser representadas por um array (neste caso, o valor do select box é o próprio texto de cada opção), ou por um hash
+  (o binding deve possuir em optionsText e optionsValue as chaves do hash usadas para resolver o texto e o valor de cada opção do select box).
+  O binding optionsCaption serve para adicionar uma opção default para quando nenhuma opção não estiver selecionada.
+</p>
+<center><img src="/images/2012/09/25/05-option-binding.png" /></center>
+<p>O formulário interativo de permissões já adquiriu sua aparência final, estando no ponto para testar a integração com a aplicação.</p>
+<h4>Nomeando os campos</h4>
+<p>
+  Para que os valores possam ser submetidos, é necessário dar nomes aos campos. No terceiro artigo da série, foi mostrado que a nomenclatura dos
+  campos deve obedecer uma notação especial, cuja construção é de responsabilidade dos FormBuilders. Com o truque abaixo, é possível continuar
+  tirando proveito dos builders nativos:
+</p>
+``` ruby
+<%= acc.fields_for :permissions, [Permission.new] do |p| %>
+  <%= p.object_name %>
+  <%= base_name = p.object_name[0..-4] %>
+<% end %>
+```
+<center><img src="/images/2012/09/25/06-capture-field-name.png" /></center>
+<p>
+  Ou seja, conseguimos obter o nome-base dos campos, removendo os caracteres "[0]" do nome gerado pelo FormBuilder.
+  Todas as vezes que for adicionada uma nova permissão, este nome-base deve ser sufixado de um índice incrementado.
+  O knockout atribuirá o nome do campo via um binding do tipo attr. O formulário fica reescrito por:
+</p>
+``` ruby
+<tbody data-bind="foreach: { data: permissions, includeDestroyed: true }">
+  <tr data-bind="css: { removed_row: _destroy }">
+    <%= acc.fields_for :permissions, [Permission.new] do |p| %>
+      <% base = p.object_name[0..-4] %>
+      <td><select data-bind="
+          attr: { name: '<%= base %>[' + index + '][restricted_area]' },
+          options: $root.areas, optionsCaption: 'Choose...'"></select></td>
+      <td><select data-bind="
+          attr: { name: '<%= base %>[' + index + '][grants]' },
+          options: $root.grants, optionsCaption: 'Choose...',
+          optionsText: 'grant', optionsValue: 'value'"></select></td>
+      <td><input type="checkbox" data-bind="checked: _destroy,
+          attr: { name: '<%= base %>[' + index + '][_destroy]' }" /></td>
+    <% end %>
+  </tr>
+</tbody>
+```
+<p>E apenas uma pequena modificação é necessária no view model, para gerar índices ao adicionar novos elementos:</p>
+``` javascript
+this.add = function() {
+  var new_index = this.permissions().length;
+  this.permissions.push({
+    index: new_index,
+    _destroy: false
+  });
+}
+```
+<p>Neste ponto, o formulário está pronto para ser submetido!</p>
+<h3>Exibir e editar associação</h3>
+<p>Para poder editar um registro existente, porém, ainda falta inicializar a tabela de permissões com os dados salvos anteriormente.</p>
+<center><img src="/images/2012/09/25/07-load-permissions.png" /></center>
+<p>
+  Isto pode ser feito com os seguintes passos:
+  <ol>
+    <li>Gerar JSON de permissões e injetar no view model</li>
+    <li>Utilizar plugin knockout.mapping para obter representações observáveis das permissões</li>
+    <li>Adicionar atributos index e _destroy para compatibilizar com os bindings dos campos</li>
+    <li>Declarar value bindings, para inicializar campos com os valores salvos anteriormente</li>
+  </ol>
+</p>
+``` javascript Passo 1 em _form.html.erb
+<script>
+  var current_permissions = <%= @person.user_account.permissions.to_json.html_safe %>;
+  var view_model = new PermissionListViewModel(current_permissions);
+  var permissions_table = document.getElementById("#permissions_table");
+  ko.applyBindings(view_model, permissions_table);
+</script>
+```
+
+``` javascript Passos 2 e 3 em people.js
+function PermissionListViewModel(permissions) {
+  this.permissions = ko.mapping.fromJS(permissions);
+  for(i in permissions) {
+    p = this.permissions()[i];
+    p._destroy = false;
+    p.index = i;
+  }
+  ...
+}
+```
+
+``` ruby Passo 4: Value bindings em _form.html.erb
+<%= acc.fields_for :permissions, [Permission.new] do |p| %>
+  <% base = p.object_name[0..-4] %>
+  <input type="hidden" data-bind="value: id,
+      attr: { name: '<%= base %>[' + index + '][id]'" />
+  <td><select data-bind="value: restricted_area,
+      attr: { name: '<%= base %>[' + index + '][restricted_area]' },
+      options: $root.areas, optionsCaption: 'Choose...'"></select></td>
+  <td><select data-bind="value: grants,
+      attr: { name: '<%= base %>[' + index + '][grants]' },
+      options: $root.grants, optionsCaption: 'Choose...',
+      optionsText: 'grant', optionsValue: 'value'"></select></td>
+  <td><input type="checkbox" data-bind="checked: _destroy,
+      attr: { name: '<%= base %>[' + index + '][_destroy]' }" /></td>
+<% end %>
+```
+<p>
+  Também é necessário inicializar os values bindings em view_model.add,
+  para que o Knockout possa realizar os value bindings ao clicar no botão:
+</p>
+``` javascript Inicialização dos value bindings na adição de permissões
+this.add = function() {
+  var new_index = this.permissions().length;
+  this.permissions.push({
+    id: "",
+    restricted_area: "",
+    grants: "",
+    index: new_index,
+    _destroy: false
+  });
+}
+```
+<p>E assim, concluímos esta série de posts:<p>
+<center><img src="/images/2012/09/25/08-working-app.png" /></center>
