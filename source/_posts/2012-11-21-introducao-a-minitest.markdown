@@ -1,8 +1,8 @@
 ---
-published: false
+published: true
 layout: post
 title: Introdução à MiniTest
-date: 2012-11-21 23:59
+date: 2012-11-21 20:00
 comments: true
 categories:
  - Rails
