@@ -232,9 +232,9 @@ Expected at least 1 element matching "p.info", found 0.
 ```
 
 Excelente! Com os testes falhando, estamos no <span style="color: red">Vermelho</span> do ciclo
-<span style="color: red">Vermelho</span> / <span style="color: limegreen">Verde</span> /
-<span style="color: brown">Refatore</span> (_Red/Green/Refactor_). É hora de fornecer
-<strong><em>a implementação <span style="font-size: larger">mais simples</span></em></strong> que faça os testes passarem:
+<span style="color: red">Vermelho</span> / <span style="color: limegreen">Verde</span> / <span style="color: brown">Refatore</span>
+[_Red/Green/Refactor_](http://rtiweb.net/engenheiro-software/2011/05/18/tutorial-tdd-%E2%80%93-test-drive-development/#axzz2DGv3nW87).
+É hora de fornecer <strong><em>a implementação <span style="font-size: larger">mais simples</span></em></strong> que faça os testes passarem:
 ``` ruby app/views/questions.index.html.erb
 <p class="info">Nenhuma questao cadastrada</p>
 <% unless @questions.empty? %>
