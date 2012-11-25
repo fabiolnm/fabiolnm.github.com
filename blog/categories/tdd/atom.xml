@@ -1,0 +1,744 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: TDD | Mind Share]]></title>
+  <link href="http://mindshare.blog.br/blog/categories/tdd/atom.xml" rel="self"/>
+  <link href="http://mindshare.blog.br/"/>
+  <updated>2012-11-25T20:15:29-02:00</updated>
+  <id>http://mindshare.blog.br/</id>
+  <author>
+    <name><![CDATA[Fábio L N Miranda]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Especificações de Views com MiniTest]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/"/>
+    <updated>2012-11-25T19:30:00-02:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest</id>
+    <content type="html"><![CDATA[<p>As Views representam a Interface do Usuário de uma aplicação. Como tal, ficam sujeitas a frequentes mudanças, orientadas por
+preocupações de usabilidade, de estética ou mesmo de evolução de requisitos.</p>
+
+<p>No Rails, as views normalmente são arquivos html contendo código Ruby focado em apresentar dados para o usuário.
+Via de regra, estes dados provêm de Models que foram recuperados por um Controller. Quando desenvolvemos <em>de fora para dentro</em>
+(<em>outside-in development</em>), as necessidades das views orientam o projeto dos controllers e models, levando a APIs mais
+consistentes e bem alinhadas com o comportamento desejado para a aplicação.</p>
+
+<p>Tamanha a responsabilidade das Views, que elas não deveriam ser ignoradas nas atividades de teste. Este artigo ilustra
+uma abordagem para testar views e alguns pontos que o desenvolvedor deve estar atento quando escreve este tipo de teste.</p>
+
+<!-- more -->
+
+
+<h2>View Specs</h2>
+
+<p>A MiniTest ainda não oferece oficialmente suporte a specs de views. Isto fica evidente por dois motivos:</p>
+
+<ul>
+<li>ao fazer scaffold, seu gerador de código não cria um diretório <code>test/views</code></li>
+<li>não há exemplos de view specs que possam servir de referênca para o desenvolvedor</li>
+</ul>
+
+
+<p>Existe, porém, um esforço nesse sentido, como pode ficar claro
+<a href="https://groups.google.com/forum/?fromgroups=#!topic/minitest-rails/pJQNRZeua3U%5B1-25%5D">nesta thread</a>.
+Estudando um pouco o código-fonte do minitest-rails, é possível encontrar
+<a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/action_view.rb">pistas</a>
+de como possibilitar a escrita de testes de views: se o nome do teste atender à expressão regular <code>/(Helper|View)( ?Test)?\z/i</code>
+este teste será executado como um <code>MiniTest::Rails::ActionView::TestCase</code>.</p>
+
+<p>Partindo do post anterior no qual foi criada uma aplicação de Quiz e foi feito scaffold de <code>Question</code>, crie o arquivo:</p>
+
+<p>``` ruby test/views/questions_view_test.rb
+require 'minitest_helper'</p>
+
+<p>describe 'Questions View Test' do
+  it "is a view spec"
+end
+```</p>
+
+<p>Note que:</p>
+
+<ul>
+<li>a descrição do teste <code>Question View Test</code> obedece à expressão regular de view specs,</li>
+<li>foi fornecido um teste <code>it "is a view spec"</code> mas ainda não foi escrito o código desse teste.</li>
+</ul>
+
+
+<p>Veja a saída de sua execução:</p>
+
+<p>``` bash Terminal
+$ rake minitest:views</p>
+
+<p>Run options: --seed 63869</p>
+
+<h1>Running tests:</h1>
+
+<p>S
+Finished tests in 0.201182s, 4.9706 tests/s, 0.0000 assertions/s.
+1 tests, 0 assertions, 0 failures, 0 errors, 1 skips
+```</p>
+
+<p>O <code>S</code> significa que o teste foi ignorado (s de <em>Skipped</em>).
+Quando um teste é descrito sem uma implementação, a sinalização <code>S</code> indica que ele está pendente. Este recurso é
+muito útil, pois serve para a criação de <em>TODO Lists</em> enquanto são modeladas as especificações de teste da aplicação.</p>
+
+<p>Para que as view specs sejam executadas junto com os demais testes pelo comando <code>rake minitest:all</code>, é necessário
+alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake">variável global MINITEST_TASKS</a>,
+no <code>Rakefile</code>:</p>
+
+<p>``` ruby Rakefile</p>
+
+<h1>!/usr/bin/env rake</h1>
+
+<h1>Add your own tasks in files placed in lib/tasks ending in .rake,</h1>
+
+<h1>for example lib/tasks/capistrano.rake, and they will automatically be available to Rake.</h1>
+
+<p>require File.expand_path('../config/application', <strong>FILE</strong>)</p>
+
+<p>Quizz::Application.load_tasks</p>
+
+<p>MINITEST_TASKS &lt;&lt; "views"
+```</p>
+
+<p>Configurado o MiniTest para rodar view specs, boa hora para comitar no git:</p>
+
+<p><code>bash Terminal
+git add .
+git commit -m "Configura MiniTest para rodar view specs"
+</code></p>
+
+<h2>Afinal, o que testar nas Views?</h2>
+
+<p>É muito importante, em todo tipo de teste, que se tenha um foco claro daquilo que precisa ser testado. Tome-se como exemplo
+uma página de listagem de questões. Pode-se listar facilmente alguns comportamentos para ela:</p>
+
+<ul>
+<li>Quando não houver questão cadastrada
+
+<ul>
+<li>Deve exibir uma mensagem "Nenhuma questão cadastrada"</li>
+<li>Não deve exibir a tabela de questões</li>
+</ul>
+</li>
+<li>Quando houver questões
+
+<ul>
+<li>Não deve exibir a mensagem "Nenhuma questão cadastrada"</li>
+<li>Deve exibir a tabela de questões</li>
+</ul>
+</li>
+</ul>
+
+
+<p>Note que as verificações listadas acima <strong>têm por objetivo testar se a view representa corretamente o estado da aplicação</strong>.
+Ou seja, fornecendo-se para a view os dados num determinado estado (<strong>sem cadastros</strong> ou <strong>com cadastros</strong>), deve-se verificar se
+ela exibe/omite corretamente uma mensagem ou uma tabela.</p>
+
+<p>Os testes podem ser inicialmente escritos na forma de uma <em>TODO List</em>: desta forma tem-se sempre um roteiro de trabalho bem
+definido e fica mais fácil manter o foco na tarefa atual, sempre em <a href="http://improveit.com.br/xp/principios/passos_bebe"><em>passinhos de bebê</em></a>.</p>
+
+<p>``` ruby test/views/questions_view_test.rb
+require 'minitest_helper'</p>
+
+<p>describe 'Questions View Test' do
+  describe "index" do</p>
+
+<pre><code>describe "with no questions" do
+  it "shows empty message"
+  it "omits table"
+end
+
+describe "with saved questions" do
+  it "omits empty message"
+  it "shows table"
+end
+</code></pre>
+
+<p>  end
+end
+```
+Antes de prosseguir com a implementação de cada teste, um commitzinho cai bem:</p>
+
+<p><code>bash Terminal
+git add .
+git commit -m "Adiciona spec inicial de Questions View"
+</code></p>
+
+<h2>E agora, José? Como se testa isso?</h2>
+
+<p>Nas views, quase sempre é preciso atentar para:</p>
+
+<ul>
+<li>Fornecer dados para a view no estado que se deseja verificar;</li>
+<li>Renderizar a view e verificar se ela apresentou corretamente o estado que ela recebeu;
+
+<ul>
+<li>Selecionar elementos de marcação (<em>markup</em>) que têm valor semântico para a aplicação.</li>
+</ul>
+</li>
+</ul>
+
+
+<p>No artigo anterior, via scaffold, foram geradas as views, dentre as quais o foco do teste atual é:</p>
+
+<p>``` html app/views/questions/index.html.erb</p>
+
+<h1>Listing questions</h1>
+
+
+<table>
+  <tr>
+    <th>Title</th>
+    <th>Content</th>
+    <th>Difficulty</th>
+    <th></th>
+    <th></th>
+    <th></th>
+  </tr>
+<% @questions.each do |question| %>
+  <tr>
+    <td><%= question.title %></td>
+    <td><%= question.content %></td>
+    <td><%= question.difficulty %></td>
+    <td><%= link_to 'Show', question %></td>
+    <td><%= link_to 'Edit', edit_question_path(question) %></td>
+    <td><%= link_to 'Destroy', question, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+  </tr>
+<% end %>
+</table>
+
+
+<p>```</p>
+
+<p>Repare bem na linha 11: a view renderiza os dados a partir da variável de instância <code>@questions</code>
+fornecida para ela. É através desta variável, portanto, que será configurado o estado do teste. Veja como
+fica o setup (preparação) do teste:</p>
+
+<p>``` ruby Setup da spec "with no questions"
+...
+describe "with no questions" do
+  before do</p>
+
+<pre><code>@questions = []
+render file: "questions/index"
+puts rendered # apenas para fins de demonstração
+</code></pre>
+
+<p>  end
+  ...
+end
+```</p>
+
+<p>Ao fazer <code>@questions</code> ser um array vazio, coloca-se a variável no estado que se deseja testar
+(<strong>nenhuma questão cadastrada</strong>). Na sequência, o método <code>render</code> renderiza a view <code>questions/index</code>.
+O conteúdo da view pode ser então acessado via chamada <code>rendered</code>.</p>
+
+<p>Por fim, o teste em si, para verificar se o conteúdo renderizado está de acordo com o comportamento esperado:</p>
+
+<p>``` ruby Verificações de conteúdo com assert_select
+it "shows empty message" do
+  assert_select "p.info", "Nenhuma questao cadastrada"
+end</p>
+
+<p>it "omits table" do
+  assert_select "table", 0
+end
+<code>
+O</code>assert_select<code>[pode ser usado de várias formas](http://apidock.com/rails/ActionDispatch/Assertions/SelectorAssertions/assert_select)
+para realizar verificações no conteúdo de</code>rendered```.</p>
+
+<p>No primeiro teste, ele verifica se a view renderizou um parágrafo com a classe CSS <code>.info</code>, e se contém a
+respectiva mensagem.</p>
+
+<p>No segundo, verifica se algum elemento <code>table</code> foi renderizado. Caso afirmativo, o teste falha, pois
+o <code>assert_select</code> recebeu como segundo argumento um número, representando quantas vezes é esperado que
+o elemento <code>table</code> ocorra - neste caso, zero!</p>
+
+<p>Veja a saída dos testes:</p>
+
+<p>``` bash Terminal
+$ rake minitest:views
+Run options: --seed 50168</p>
+
+<h1>Running tests:</h1>
+
+<p>FFSS
+Finished tests in 0.143716s, 27.8327 tests/s, 13.9163 assertions/s.</p>
+
+<p>  1) Failure:
+test_0002_omits table(Questions View Test::index::with no questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:16]:
+Expected exactly 0 elements matching "table", found 1.</p>
+
+<p>  2) Failure:
+test_0001_shows empty message(Questions View Test::index::with no questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:12]:
+Expected at least 1 element matching "p.info", found 0.
+```</p>
+
+<p>Excelente! Com os testes falhando, estamos no <span style="color: red">Vermelho</span> do ciclo
+<span style="color: red">Vermelho</span> / <span style="color: limegreen">Verde</span> / <span style="color: brown">Refatore</span>
+<a href="http://rtiweb.net/engenheiro-software/2011/05/18/tutorial-tdd-%E2%80%93-test-drive-development/#axzz2DGv3nW87"><em>Red/Green/Refactor</em></a>.
+É hora de fornecer <strong><em>a implementação <span style="font-size: larger">mais simples</span></em></strong> que faça os testes passarem:
+``` ruby app/views/questions.index.html.erb</p>
+
+<p class="info">Nenhuma questao cadastrada</p>
+
+
+<p>&lt;% unless @questions.empty? %></p>
+
+<table>
+  ...
+</table>
+
+
+<p>&lt;% end %>
+```</p>
+
+<p>Os testes passam:
+``` bash Terminal
+$ rake minitest:views
+Run options: --seed 54895</p>
+
+<h1>Running tests:</h1>
+
+<p>..SS
+Finished tests in 0.301827s, 13.2526 tests/s, 6.6263 assertions/s.
+4 tests, 2 assertions, 0 failures, 0 errors, 2 skips
+```</p>
+
+<p>Estamos no <span style="color: limegreen">verde</span>, e fazendo progressos! Com gestos de
+<a href="http://www.youtube.com/watch?v=GyT_KyAqDEc#t=70">cavalaria</a>, cantamos: Oppa Commit Time!</p>
+
+<p><code>bash Terminal
+git commit -am "Tratamento da view questions/index quando não há questões cadastradas"
+</code></p>
+
+<p>Repetindo o processo, para o cenário seguinte, o teste fica escrito por:</p>
+
+<p>``` ruby Spec "com questões cadastradas"
+describe "with five questions" do
+  before do</p>
+
+<pre><code>@questions = (1..5).each.collect {|i|
+  question = Question.new title: "Title #{i}",
+    content: "Mussum Impsum #{i}", difficulty: i
+
+  # estamos simulando uma questão salva no banco de dados, logo, precisa ter um id
+  question.id = i
+  question
+}
+render file: "questions/index"
+</code></pre>
+
+<p>  end</p>
+
+<p>  it "omits empty message" do</p>
+
+<pre><code>assert_select "p.info", count: 0,
+  text: "Nenhuma questao cadastrada"
+</code></pre>
+
+<p>  end</p>
+
+<p>  it "shows table" do</p>
+
+<pre><code>assert_select "table" do
+  assert_select "thead tr", 1
+  assert_select "tbody tr", @questions.count
+end
+</code></pre>
+
+<p>  end
+end
+```
+Repare nas verificações:</p>
+
+<ul>
+<li>Para a ausência da mensagem "Nenhuma questão cadastrada": o <code>assert_select</code> recebe um hash,
+com o atributo <code>count</code> informando que são esperados "zero elementos" <code>p.info</code> com o texto citado.</li>
+<li>Para os elementos da tabela: o <code>assert_select</code> permite <strong><em>aninhamento</em> de verificações</strong>, ou seja, uma verificação
+dentro de outra verificação. Primeiro é feita a seleção da tabela - caso ela seja encontrada, aí sim
+verifica-se a presença de linhas da tabela, <code>thead tr</code> e <code>tbody tr</code>.</li>
+</ul>
+
+
+<p>Os testes falham, conforme era de se esperar:
+``` bash Terminal
+$ rake minitest:views
+Run options: --seed 57692</p>
+
+<h1>Running tests:</h1>
+
+<p>FF..
+Finished tests in 0.367636s, 10.8803 tests/s, 13.6004 assertions/s.</p>
+
+<p>  1) Failure:
+test_0002_shows table(Questions View Test::index::with five questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:37]:
+Expected exactly 1 element matching "thead tr", found 0.</p>
+
+<p>  2) Failure:
+test_0001_omits empty message(Questions View Test::index::with five questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:32]:
+Expected exactly 0 elements matching "p.info", found 1.
+```</p>
+
+<p>Segue a implementação que faz os testes passar:
+``` ruby Versão final de app/views/questions/index.html.erb
+&lt;% if @questions.empty? %>
+  <p class="info">Nenhuma questao cadastrada</p>
+&lt;% else %></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Content</th>
+      <th>Difficulty</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+<% @questions.each do |question| %>
+  <tbody>
+    <tr>
+      <td><%= question.title %></td>
+      <td><%= question.content %></td>
+      <td><%= question.difficulty %></td>
+      <td><%= link_to 'Show', question %></td>
+      <td><%= link_to 'Edit', edit_question_path(question) %></td>
+      <td><%= link_to 'Destroy', question, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+    </tr>
+  </tbody>
+<% end %>
+</table>
+
+
+<p>&lt;% end %>
+```</p>
+
+<p>E passaram mesmo, ó:
+``` bash Terminal
+$ rake minitest:views
+Run options: --seed 24562</p>
+
+<h1>Running tests:</h1>
+
+<p>....
+Finished tests in 0.118319s, 33.8069 tests/s, 50.7104 assertions/s.
+4 tests, 6 assertions, 0 failures, 0 errors, 0 skips
+```</p>
+
+<p>Por fim, um commitão, só pra variar, mas agora seguido de um push pro GitHub.
+<code>bash Terminal
+git commit -am "Tratamento da view questions/index quando há questões cadastradas"
+git push origin master
+</code></p>
+
+<h2>Considerações Finais</h2>
+
+<h4>Muito teste pra pouco código?</h4>
+
+<p>Neste artigo foram geradas 41 linhas de código de teste, como pode ser visto
+<a href="https://github.com/fabiolnm/quiz/blob/16ea3bf9f236bbd0c4e57b4d4057e19b018e4a6a/test/views/questions_view_test.rb">neste commit</a>. No entanto,
+foram adicionadas apenas <a href="https://github.com/fabiolnm/quiz/commit/16ea3bf9f236bbd0c4e57b4d4057e19b018e4a6a">7 linhas de código na view</a>.
+Uma proporção de 1:6. O custo do código de testes realmente compensa o investimento em escrevê-los?</p>
+
+<p>Tradicionalmente, as aplicações são testadas levantando-se um servidor e fazendo inspeção <em>manual</em> do funcionamento da aplicação, por meio de
+navegação em suas páginas. Muitas aplicações carecem também de longas etapas de homologação, onde cada funcionalidade precisa ser validada
+manualmente a cada release.</p>
+
+<p>O teste automatizado não elimina os testes manuais - vide o artigo <a href="http://railspikes.com/2008/7/11/testing-is-overrated">Testing is Overrated</a> -
+mas ajuda a manter o foco nas funcionalidades relevantes, e tornando a homologação mais ágil, com menos riscos.</p>
+
+<p>Outra forma de pensar é: o Rails fornece muitos recursos que contribuem para o ganho de agilidade e produtividade (por exemplo, desde o scaffold,
+já está disponível uma aplicação funcional, criada com uma única linha de comando). É bastante prudente utilizar com sabedoria essas facilidades,
+e aproveitar o tempo que se ganhou como um bônus para investir em qualidade e confiabilidade dos softwares construídos com esta fantástica framework!</p>
+
+<h4>Em nenhum momento foi aberto o navegador</h4>
+
+<p>Desde que a aplicação Quiz foi criada no post anterior, em nenhum momento foi necessário abrir o navegador. Isso é interessantíssimo:
+consegue-se evoluir as funcionalidades de uma aplicação Web sem a realização de testes manuais, sem a necessidade de navegação humana
+para assegurar que a aplicação está funcionando.</p>
+
+<p>Ao automatizar os testes de views, deve-se procurar um ponto de equilíbrio, onde os testes repetitivos possam ser automatizados, e os testes
+manuais possam ser direcionados e focados nos aspectos mais relevantes/críticos da aplicação.</p>
+
+<h4>Proporção 1:3</h4>
+
+<p>É muito comum em aplicações Rails bem escritas que a relação entre a quantidade de código da aplicação e a quantidade de código de teste da aplicação
+fique em torno de <a href="http://37signals.com/svn/posts/3159-testing-like-the-tsa">1:2 e 1:3</a>.</p>
+
+<p>Se você desenvolvedor ainda não aderiu à disciplina de testes, é melhor começar a se sentir
+<strong style="font-size: larger">CULPADO</strong>, pois está fazendo apenas <strong style="font-size: larger">UM TERÇO</strong> de seu trabalho.</p>
+
+<p>Se você contratante ainda recruta desenvolvedores que não praticam a disciplina de testes, deveria ficar <strong style="font-size: larger">PREOCUPADO</strong>,
+pois está pagando <strong style="font-size: larger">TRÊS VEZES MAIS CARO</strong>, e ainda corre um alto risco de receber um trabalho com baixa qualidade.</p>
+
+<h4>Teste focado e desacoplado</h4>
+
+<p>A <a href="http://guides.rubyonrails.org/getting_started.html#the-mvc-architecture">Arquitetura MVC</a> encoraja uma clara organização de código.
+Os testes de views mostrados neste artigo estão totalmente alinhados com este princípio. Sendo o papel das views apresentar para o usuário
+o estado da aplicação, a preparação (setup) dos testes coloca a aplicação no estado que se deseja testar, sem interação nem com os
+controllers nem com o banco de dados. O teste é, portanto, focado em verificar apenas se a View está cumprindo seu papel.</p>
+
+<p>Este desacoplamento é importantíssimo para a saúde da suíte de testes. Quando o acoplamento é alto, à medida que a aplicação cresce em
+complexidade, é muito comum que uma pequena alteração de código provoque a quebra de muitos testes da suíte. Isto torna caras
+até mesmo pequenas alterações, impactando na agilidade e na produtividade, alguns dos benefícios esperados quando se adota TDD.</p>
+
+<p>No <a href="http://pragprog.com/book/hwcuc/the-cucumber-book">capítulo 6 do Livro do Cucumber, versão P1.0</a>, este sintoma é catalogado como
+<string><em>Funcionalidade Frágil (Brittle Feature)</em></strong>. É uma dívida técnica que tende a aumentar rapidamente, pois quando isso
+ocorre a tendência é tirar os testes do caminho, ou ter menos cuidado na escrita de novos testes.</p>
+
+<h4>Nenhum acesso ao banco de dados</h4>
+
+<p>Em todas as preparações (setups) de teste de views, os objetos de modelos foram instanciados em memória, simulando o estado que eles teriam na
+aplicação. Para simular um objeto "salvo no banco de dados", bastou setar o id do objeto, como se ele tivesse vindo do banco.</p>
+
+<p>Isto torna os testes de views independentes dos arquivos de <a href="http://guides.rubyonrails.org/testing.html#the-low-down-on-fixtures"><em>fixtures</em></a>
+de teste da aplicação. Normalmente esses testes também acabam rodando mais rápido, dado que não é feito nenhum acesso a banco. Isso contribui
+para a rapidez e a saúde da suíte de testes.</p>
+
+<h4>Modelagem Semântica da Página</h4>
+
+<p>Outro benefício de fazer testes de views é que cada página acaba sendo construída de acordo com as preocupações
+semânticas direcionadas pelos testes. Uma mensagem "Nenhum resultado encontrado" parece ficar bem em um parágrafo
+com classe CSS info. Dados provenientes de bancos de dados normalmente se adaptam bem a estruturas tabulares. Mensagens de erro
+normalmente são fortes candidatas a renderizar em listas, e por aí vai.</p>
+
+<p>Este cuidado com organização semântica é importante inclusive no que tange às atividades de SEO. Além disso, é muito
+mais fácil e menos caro um desenvolvedor entregar para um Web Designer um markup pronto, enxuto, para que o Web Designer
+possa focar na criação das folhas de estilo que deixam o sistema mais elegante, do que o contrário - o desenvolvedor
+pegar um design pronto e transformá-lo em algo funcional e que tenha significado para a aplicação.</p>
+
+<p>O <a href="http://www.mezzoblue.com/zengarden/alldesigns/">CSS Zen Garden</a> é um exemplo que vale à pena citar de como é importante
+um sistema ter um markup enxuto e consistente, que os web designers têm a liberdade de estilizar, sem precisar alterar
+o markup.</p>
+
+<h2>Bibliografia</h2>
+
+<ul>
+<li><a href="http://guides.rubyonrails.org/getting_started.html#the-mvc-architecture">The MVC Architecture</a></li>
+<li><a href="http://pragprog.com/book/achbd/the-rspec-book">The RSpec Book, version P2.1, chapter 23</a></li>
+<li><a href="http://apidock.com/rails/ActionDispatch/Assertions/SelectorAssertions/assert_select">API Dock - assert_select</a></li>
+<li><a href="https://github.com/rails/rails/blob/e95b9d6c68b1e0bba3840d18fc0aa94ccf88776d/actionpack/lib/action_view/test_case.rb">ActionView::TestCase - a base para testes de views</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActionView/TestCase/Behavior.html#method-i-locals">ActionView::TestCase::Behavior - a ponte entre as variáveis de instância do teste e da view,
+e que fornece o método rendered</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActionView/Helpers/RenderingHelper.html#method-i-render">Documentação do método render, usado nos testes de views</a></li>
+<li><a href="http://www.mezzoblue.com/zengarden/alldesigns/">CSS Zen Garden</a></li>
+<li><a href="http://railspikes.com/2008/7/11/testing-is-overrated">Testing is Overrated</a></li>
+<li><a href="http://37signals.com/svn/posts/3159-testing-like-the-tsa">Testing like the TSA</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Introdução à MiniTest]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest/"/>
+    <updated>2012-11-21T20:00:00-02:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest</id>
+    <content type="html"><![CDATA[<p>O framework Ruby-on-Rails possui muitas facilidades para a escrita de testes de aplicações web.
+Historicamente, a API Test::Unit provê os recursos básicos, e muitas outras gems surgiram
+para complementar ou mesmo substituir o Test::Unit (vide RSpec, Shoulda, Mocha, etc).</p>
+
+<p>Em 2010, a versão 1.9 do Ruby introduziu uma versão atualizada da Test::Unit, chamada MiniTest.
+Ao mesmo tempo que guarda retrocompatibilidade com o Test::Unit, a MiniTest introduz novos recursos
+à linguagem, sendo a principal delas uma DSL (Domain Specific Language) para escrever testes num
+estilo BDD (Behavior Driven Development), similar à sintaxe do RSpec.</p>
+
+<!-- more -->
+
+
+<p>Isto constitui um passo importante dentro da biblioteca-base do Ruby, agora numa posição mais neutra
+na <a href="http://akitaonrails.com/2011/04/17/a-controversia-test-unit-vs-rspec-cucumber">controvérsia TDD x BDD</a>.
+No Rails 4, a <a href="https://github.com/rails/rails/blob/master/activesupport/lib/active_support/test_case.rb">Test::Unit deverá subclassear MiniTest::Spec</a>,
+para se ter uma idéia de quão significativa é essa mudança.</p>
+
+<h2>Iniciando um Projeto, sem a Test::Unit</h2>
+
+<p>O comando <code>rails new nome_do_projeto</code>, por padrão, cria um diretório com a estrutura padrão do Test::Unit:</p>
+
+<pre><code>▾ test/
+  ▾ fixtures/
+  ▾ functional/
+  ▾ integration/
+  ▾ performance/
+  ▾ unit/
+  test_helper.rb
+</code></pre>
+
+<p>Como pretendemos usar a MiniTest, podemos criar o projeto passando o argumento -T, equivalente a --skip-test-unit,
+ou seja, cria o projeto, mas pulando a criação da estrutura básica do Test::Unit:</p>
+
+<p><code>bash Terminal
+rails new quiz -T
+</code></p>
+
+<p>Criado o projeto, é um bom momento para versionar com o Git
+<code>bash Terminal
+git init
+git add .
+git commit -m "Commit inicial"
+</code></p>
+
+<p>Apesar deste post não ser sobre git, vamos seguir as boas práticas e dar passos pequenos e consistentes,
+comitando cada avanço que seja significativo.</p>
+
+<h2>MiniTest-Rails</h2>
+
+<p>A gem <a href="https://github.com/blowmage/minitest-rails">minitest-rails</a> vem suprindo as extensões necessárias para
+usar a MiniTest em projetos Rails. É necessário adicioná-la ao Gemfile:</p>
+
+<p><code>ruby Gemfile
+group :development, :test do
+  gem 'minitest-rails'
+end
+</code></p>
+
+<p>Em seguida, é necessário instalar a gem com o bundler, e utilizar um rails generator para
+criar o arquivo test/minitest_helper.rb:
+<code>bash Terminal
+bundle install
+rails generate mini_test:install
+</code></p>
+
+<p>Bom momento pra comitar:
+<code>bash Terminal
+git add .
+git commit -m "Instala minitest-rails"
+</code></p>
+
+<p>Podemos então prosseguir para a adição da primeira funcionalidade de um Quiz: a criação de Perguntas.
+Para acelerar o desenvolvimento, nada melhor que utilizar o rails scaffold, que cria toda uma estrutura MVC como
+ponto de partida. Antes de rodar o scaffold, porém, devemos configurar o generator para gerar os testes utilizando
+a DSL do MiniTest::Spec:</p>
+
+<p><code>ruby config/application.rb
+config.generators do |g|
+  g.test_framework :mini_test, spec: true
+end
+</code></p>
+
+<p>Ao rodar o generator:</p>
+
+<p><code>bash Terminal
+rails generate scaffold Question title:string content:text difficulty:integer
+</code></p>
+
+<p>É gerada a estrutura básica da aplicação. Atenção especial para o diretório de testes:</p>
+
+<pre><code>▾ test/
+  ▾ controllers/
+      questions_controller_test.rb
+  ▾ fixtures/
+      questions.yml
+  ▾ helpers/
+      questions_helper_test.rb
+  ▾ models/
+      question_test.rb
+</code></pre>
+
+<p>Foi gerada, portanto, a estrutura da aplicação, e os respectivos testes para os
+Models, Controllers e Views que foram gerados. Antes de mergulhar a fundo em cada um desses testes,
+vale a pena rodar a suite de testes. Primeiro, roda-se a migration de criação da tabela questions no
+banco de dados:</p>
+
+<p><code>bash terminal - execução da migration criada no scaffold
+rake db:migrate
+</code></p>
+
+<p>Uma vez que não haja mais nenhuma migration pendente, os testes podem ser executados com um dos comandos:
+``` bash Terminal
+rake test                 #
+rake minitest             # rodam todos os testes
+rake minitest:all         #</p>
+
+<p>rake minitest:models      # roda apenas os testes de unidade dos models
+rake minitest:helpers     # roda apenas os testes dos helpers das views
+rake minitest:controllers # roda apenas os testes funcionais dos controllers
+```</p>
+
+<p>Veja abaixo saída da execução dos testes. Primeiro são executados os testes de models, depois os helpers e por fim os funcionais.
+Cada <code>.</code> após a linha <code># Running tests</code> é um teste executado com sucesso. Cada <code>F</code>, um teste falhando. Os testes funcionais
+gerados via scaffold são 7, um para cada <a href="http://guides.rubyonrails.org/routing.html#crud-verbs-and-actions">ação de um recurso RESTful</a>.</p>
+
+<p>``` bash Terminal
+$ rake minitest:all</p>
+
+<p>Run options: --seed 27504</p>
+
+<h1>Running tests:</h1>
+
+<p>.
+Finished tests in 0.063599s, 15.7235 tests/s, 15.7235 assertions/s.
+1 tests, 1 assertions, 0 failures, 0 errors, 0 skips</p>
+
+<p>Run options: --seed 3609</p>
+
+<h1>Running tests:</h1>
+
+<p>F
+Finished tests in 0.070579s, 14.1685 tests/s, 14.1685 assertions/s.
+  1) Failure:
+test_0001_must be a real test(QuestionsHelper) [/Users/fabio/workspace/miranti/quizz/test/helpers/questions_helper_test.rb:6]:
+Need real tests
+1 tests, 1 assertions, 1 failures, 0 errors, 0 skips</p>
+
+<p>Run options: --seed 4676</p>
+
+<h1>Running tests:</h1>
+
+<p>.......
+Finished tests in 0.150315s, 46.5689 tests/s, 66.5270 assertions/s.
+7 tests, 10 assertions, 0 failures, 0 errors, 0 skips</p>
+
+<p>Errors running minitest:helpers! #&lt;RuntimeError: Command failed with status (1): [ruby -I"lib:test" -I"/Users/fabio/.rbenv/versions/1.9.3-p286/lib/ruby/gems/1.9.1/gems/rake-10.0.1/lib" "/Users/fabio/.rbenv/versions/1.9.3-p286/lib/ruby/gems/1.9.1/gems/rake-10.0.1/lib/rake/rake_test_loader.rb" "test/helpers/<em>*/</em>_test.rb" ]>
+```</p>
+
+<p>Para finalizar esta parte introdutória, podemos fazer os commits no git:
+``` bash Terminal
+git add config/application.rb
+git commit -m "Configura gerador de código do MiniTest"</p>
+
+<p>git add .
+git commit -m "Adiciona scaffold do modelo Question"
+```</p>
+
+<p>E fazer um push para um repositório remoto, por exemplo o <a href="https://github.com">GitHub</a>:
+<code>bash Terminal
+git remote add origin git@github.com:fabiolnm/quiz.git
+git push -u origin master
+</code></p>
+
+<h2>Conclusão</h2>
+
+<p>Neste post introdutório:</p>
+
+<ul>
+<li>Iniciamos uma aplicação sem a Test::Unit</li>
+<li>Instalamos e configuramos a MiniTest</li>
+<li>Geramos algumas specs via rails scaffolding</li>
+<li>Rodamos os testes com o Rake</li>
+</ul>
+
+
+<p>Nos próximos posts desta série, serão explorados em maior profundidade cada um dos tipos de spec - de models, views e controllers.</p>
+
+<h2>Bibliografia</h2>
+
+<ul>
+<li><a href="http://guides.rubyonrails.org/testing.html">A Guide to Testing Rails Applications</a></li>
+<li><a href="http://www.bootspring.com/2010/09/22/minitest-rubys-test-framework">MiniTest: a framework de teste do Ruby 1.9</a></li>
+<li><a href="http://www.rubyflow.com/items/8037-a-path-to-rails-4-with-minitest-spec">A Path to Rails 4 with MiniTest::Spec</a></li>
+<li><a href="http://metaskills.net/2011/03/26/using-minitest-spec-with-rails">Using MiniTest::Spec with Rails</a></li>
+<li><a href="http://akitaonrails.com/2011/04/17/a-controversia-test-unit-vs-rspec-cucumber">A controvérsia Test::Unit vs RSpec/Cucumber</a></li>
+<li><a href="http://blog.rawonrails.com/2012/01/better-way-of-testing-rails-application.html">A better way of testing Rails application with minitest</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>

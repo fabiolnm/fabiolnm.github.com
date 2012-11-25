@@ -1,0 +1,578 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>MultiModel forms, parte 3: Nested Forms - Mind Share</title>
+  <meta name="author" content="Fábio L N Miranda">
+
+  
+  <meta name="description" content="Nos dois primeiros posts desta série, foi mostrado o poder do uso de Nested Models.
+O Rails fornece também view helpers para a construção de views &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Mind Share" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-36584515-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Mind Share</a></h1>
+  
+    <h2>Compartilhando know-how sobre desenvolvimento de software</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:mindshare.blog.br" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="http://www.visualcv.com/fabiolnm" target="_blank">Resume</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">MultiModel Forms, Parte 3: Nested Forms</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-08-06T00:00:00-03:00" pubdate data-updated="true">Aug 6<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><div class='post'>
+Nos dois primeiros posts desta série, foi mostrado o poder do uso de Nested Models.
+O Rails fornece também view helpers para a construção de views com este recurso.
+<!-- more -->
+Seguem os links dos posts anteriores:
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
+      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
+</ul>
+O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+
+<h2>Nested Forms</h2>
+Os view helpers do rails são capazes de gerar markup especial, aderente à notação dos nested models.
+Veja como pode ser reescrito o formulário (criado no passo de scaffold no primeiro post desta série):
+<figure class='code'><figcaption><span>app/views/people/_form.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="sx">%= form_for(@person) do |f| %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;div class=</span><span class="s2">&quot;field&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="sx">%= f.label :name %&gt;&lt;br /&gt;</span>
+</span><span class='line'><span class="sx">    &lt;%=</span> <span class="n">f</span><span class="o">.</span><span class="n">text_field</span> <span class="ss">:name</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">  &lt;/div&gt;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">&lt;</span><span class="sx">%= f.fields_for :user_account do |acc| %&gt;</span>
+</span><span class='line'><span class="sx">    &lt;div class=</span><span class="s2">&quot;field&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="sx">%= acc.label :username %&gt;&lt;br /&gt;</span>
+</span><span class='line'><span class="sx">      &lt;%=</span> <span class="n">acc</span><span class="o">.</span><span class="n">text_field</span> <span class="ss">:username</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">    &lt;/div&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="n">div</span> <span class="n">class</span><span class="o">=</span><span class="s2">&quot;field&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="sx">%= acc.label :password %&gt;&lt;br /&gt;</span>
+</span><span class='line'><span class="sx">      &lt;%=</span> <span class="n">acc</span><span class="o">.</span><span class="n">password_field</span> <span class="ss">:password</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">    &lt;/div&gt;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">&lt;</span><span class="sx">%= acc.fields_for :permissions do |p| %&gt;</span>
+</span><span class='line'><span class="sx">      &lt;div class=</span><span class="s2">&quot;field&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>        <span class="o">&lt;</span><span class="sx">%= p.label p.object.restricted_area %&gt;</span>
+</span><span class='line'><span class="sx">        &lt;%=</span> <span class="nb">p</span><span class="o">.</span><span class="n">hidden_field</span> <span class="ss">:restricted_area</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">        &lt;%= p.select :grants,</span>
+</span><span class='line'><span class="sx">          [ &quot;Read-Only&quot;, &quot;Read-Write&quot;, &quot;Read-Write-Delete&quot; ],</span>
+</span><span class='line'><span class="sx">          include_blank: true %&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="sr">/div&gt;</span>
+</span><span class='line'><span class="sr">    &lt;% end %&gt;</span>
+</span><span class='line'><span class="sr">  &lt;% end %&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="sr">  &lt;div class=&quot;actions&quot;&gt;</span>
+</span><span class='line'><span class="sr">    &lt;%= f.submit %&gt;</span>
+</span><span class='line'><span class="sr">  &lt;/</span><span class="n">div</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end </span><span class="o">%&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Entre na tela de cadastro (http://localhost:3000/people/new), para visualizar um formulário contendo os campos de Person, UserAccount e Permission:</p>
+
+<center><img src="/images/2012/08/06/new_person.png" /></center>
+
+<p>Oops. Apenas os campos de Person estão visíveis. Não é difícil conjecturar o porquê. Ao criar um novo objeto Person, ele não possui um user_account, como pode ser confirmado no console:</p>
+
+<figure class='code'><figcaption><span>Inspecionando a conta de usuário de uma Pessoa no rails console</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">Person</span><span class="o">.</span><span class="n">new</span><span class="o">.</span><span class="n">user_account</span>
+</span><span class='line'> <span class="o">=&gt;</span> <span class="kp">nil</span>
+</span></code></pre></td></tr></table></div></figure>
+
+É necessário sobrescrever o método Person/user_account, para que retorne um novo objeto quando Person não tiver uma conta de usuário associada:
+<figure class='code'><figcaption><span>app/models/person.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">user_account</span>
+</span><span class='line'>  <span class="vi">@user_account</span> <span class="o">=</span> <span class="k">super</span>
+</span><span class='line'>  <span class="vi">@user_account</span> <span class="o">=</span> <span class="n">build_user_account</span> <span class="k">if</span> <span class="vi">@user_account</span><span class="o">.</span><span class="n">nil?</span>
+</span><span class='line'>  <span class="vi">@user_account</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+  <p>Isto é suficiente para habilitar os campos de UserAccount:</p>
+
+  <center><img src="/images/2012/08/06/user_account.png" /></center>
+
+  <p>Para exibir os campos referentes aos atributos de Permission, criamos um método UserAccount/permissions_types, que pré-instancia as possíveis opções:</p>
+<figure class='code'><figcaption><span>app/models/user_account.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="k">def</span> <span class="nf">permissions_types</span>
+</span><span class='line'>  <span class="nb">hash</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span class='line'>  <span class="n">permissions</span><span class="o">.</span><span class="n">each</span> <span class="p">{</span> <span class="o">|</span><span class="nb">p</span><span class="o">|</span> <span class="nb">hash</span><span class="o">[</span><span class="nb">p</span><span class="o">.</span><span class="n">restricted_area</span><span class="o">]</span> <span class="o">=</span> <span class="nb">p</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="o">[</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="s2">&quot;backups&quot;</span><span class="p">,</span> <span class="s2">&quot;logs&quot;</span> <span class="o">].</span><span class="n">each</span> <span class="p">{</span> <span class="o">|</span><span class="n">area</span><span class="o">|</span>
+</span><span class='line'>    <span class="nb">hash</span><span class="o">[</span><span class="n">area</span><span class="o">]</span> <span class="o">=</span> <span class="no">Permission</span><span class="o">.</span><span class="n">new</span> <span class="n">restricted_area</span><span class="p">:</span> <span class="n">area</span> <span class="k">unless</span> <span class="nb">hash</span><span class="o">.</span><span class="n">has_key?</span> <span class="n">area</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="nb">hash</span><span class="o">.</span><span class="n">values</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+  <p>Note que as duas primeiras linhas &#8220;memorizam&#8221; associações previamente salvas,
+    enquanto nas linhas seguintes, são construídos novos objetos apenas para as associações que ainda não estiverem presentes.</p>
+  <p>É necessário modificar o formulário para construir os campos de permissões utilizando este método:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="sx">%= acc.fields_for :permissions, acc.object.permissions_types do |p| %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;div class=</span><span class="s2">&quot;field&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="sx">%= p.label p.object.restricted_area %&gt;</span>
+</span><span class='line'><span class="sx">    &lt;%=</span> <span class="nb">p</span><span class="o">.</span><span class="n">hidden_field</span> <span class="ss">:restricted_area</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">    &lt;%= p.select :grants, [ &quot;Read-Only&quot;, &quot;Read-Write&quot;, &quot;Read-Write-Delete&quot; ], include_blank: true %&gt;</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="sr">/div&gt;</span>
+</span><span class='line'><span class="sr">&lt;% end %&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+  <p>Vejamos como ficou:</p>
+  <center><img src="/images/2012/08/06/permissions.png" /></center>
+
+  <p>Agora que os campos já estão presentes no formulário, basta salvar um registro:</p>
+  <center><img src="/images/2012/08/06/validation.png" /></center>
+
+  <p>
+    Oops&#8230; estamos quase lá&#8230; Vamos tentar entender o que aconteceu.
+    Com auxílio do Chrome Developer Tools, podemos analisar os dados que são submetidos com o formulário:
+  </p>
+
+  <center><img src="/images/2012/08/06/post_data.png" /></center>
+
+Os view helpers do Rails criam campos com nomes que são adequados à sua forma de processar nested models. Se analisarmos o log do controller, vemos que o request foi convertido para um hash, representando estes parâmetros de forma hierárquica (formatei o log para facilitar sua visualização):<br />
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="no">Started</span> <span class="no">POST</span> <span class="s2">&quot;/people&quot;</span> <span class="k">for</span> <span class="mi">127</span><span class="o">.</span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="o">.</span><span class="mi">1</span> <span class="n">at</span> <span class="mi">2012</span><span class="o">-</span><span class="mi">08</span><span class="o">-</span><span class="mo">05</span> <span class="mi">22</span><span class="p">:</span><span class="mi">36</span><span class="p">:</span><span class="mi">11</span> <span class="o">-</span><span class="mo">0300</span>
+</span><span class='line'><span class="no">Connecting</span> <span class="n">to</span> <span class="n">database</span> <span class="n">specified</span> <span class="n">by</span> <span class="n">database</span><span class="o">.</span><span class="n">yml</span>
+</span><span class='line'><span class="no">Processing</span> <span class="n">by</span> <span class="no">PeopleController</span><span class="c1">#create as HTML</span>
+</span><span class='line'><span class="no">Parameters</span><span class="p">:</span> <span class="p">{</span>
+</span><span class='line'>  <span class="s2">&quot;utf8&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;✓&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="s2">&quot;authenticity_token&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;iTFVyyIwp0w2apXT02s+XN3z6PfOFEuUgZRaZWxPegU=&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="s2">&quot;person&quot;</span><span class="o">=&gt;</span><span class="p">{</span>
+</span><span class='line'>    <span class="s2">&quot;name&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;José da Silva&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="s2">&quot;user_account_attributes&quot;</span><span class="o">=&gt;</span><span class="p">{</span>
+</span><span class='line'>      <span class="s2">&quot;username&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;jsilva&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;password&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;[FILTERED]&quot;</span><span class="p">,</span>
+</span><span class='line'>      <span class="s2">&quot;permissions_attributes&quot;</span><span class="o">=&gt;</span><span class="p">{</span>
+</span><span class='line'>        <span class="s2">&quot;0&quot;</span><span class="o">=&gt;</span><span class="p">{</span>
+</span><span class='line'>          <span class="s2">&quot;restricted_area&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
+</span><span class='line'>          <span class="s2">&quot;grants&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;Read-Only&quot;</span>
+</span><span class='line'>        <span class="p">},</span>
+</span><span class='line'>        <span class="s2">&quot;1&quot;</span><span class="o">=&gt;</span><span class="p">{</span>
+</span><span class='line'>          <span class="s2">&quot;restricted_area&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;backups&quot;</span><span class="p">,</span>
+</span><span class='line'>          <span class="s2">&quot;grants&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;&quot;</span>
+</span><span class='line'>        <span class="p">},</span>
+</span><span class='line'>        <span class="s2">&quot;2&quot;</span><span class="o">=&gt;</span><span class="p">{</span>
+</span><span class='line'>          <span class="s2">&quot;restricted_area&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;logs&quot;</span><span class="p">,</span>
+</span><span class='line'>          <span class="s2">&quot;grants&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;Read-Write&quot;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>  <span class="p">},</span>
+</span><span class='line'>  <span class="s2">&quot;commit&quot;</span><span class="o">=&gt;</span><span class="s2">&quot;Create Person&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+Faz sentido: o rails tentou criar uma permission com o campo grants em branco, mas este campo é obrigatório (vide a parte 2 desta série). É necessário alguma forma de filtrar de permission_attributes os valores que estiverem com grants em branco. Há: Rails possui essa facilidade:<br />
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">accepts_nested_attributes_for</span> <span class="ss">:permissions</span><span class="p">,</span> <span class="n">allow_destroy</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span>
+</span><span class='line'>  <span class="n">reject_if</span><span class="p">:</span> <span class="nb">proc</span> <span class="p">{</span> <span class="o">|</span><span class="n">attrs</span><span class="o">|</span>  <span class="n">attrs</span><span class="o">[</span><span class="s2">&quot;grants&quot;</span><span class="o">].</span><span class="n">blank?</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+  <p>Basta este pequeno ajuste em UserAccount para conseguimos salvar o registro, que na figura abaixo, foi reaberto para edição:</p>
+
+  <center><img src="/images/2012/08/06/edit_person.png" /></center>
+
+  <p>
+    É incrível: simplesmente funciona! Tudo bem até aqui, já conseguimos salvar.
+    Mas logo descobrimos que o &#8220;brinquedo quebra&#8221; se tentar remover uma permissão: tente deixar Logs em branco e salvar.
+    Parece que tudo deu certo, mas ao reabrir para edição, a permissão continua lá.
+  </p>
+
+  <p>
+    Isto ocorre pois, após termos adicionado a cláusula reject_if, as permissões em branco passaram a ser rejeitadas.
+    O Rails não tem mais a oportunidade de processá-las. Além disso, vimos nos posts anteriores que, para remover um nested model, é necessário passar
+    <b style="color: blue;">_destroy: true</b> como um de seus parâmetros.
+  </p>
+
+  Pode-se usar um checkbox para adicionar um atributo _destroy:<br />
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="sx">%= acc.fields_for :permissions, acc.object.permissions_types do |p| %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;%=</span> <span class="nb">p</span><span class="o">.</span><span class="n">label</span> <span class="nb">p</span><span class="o">.</span><span class="n">object</span><span class="o">.</span><span class="n">restricted_area</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">  &lt;%= p.hidden_field :restricted_area %&gt;</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="sx">%= p.select :grants, [ &quot;Read-Only&quot;, &quot;Read-Write&quot;, &quot;Read-Write-Delete&quot; ], include_blank: true %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;b&gt;&lt;span style=</span><span class="s2">&quot;color: blue;&quot;</span><span class="o">&gt;&lt;</span><span class="sx">% unless </span><span class="nb">p</span><span class="o">.</span><span class="n">object</span><span class="o">.</span><span class="n">new_record?</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">    &lt;%= p.check_box :_destroy %&gt;</span>
+</span><span class='line'>    <span class="o">&lt;%=</span> <span class="nb">p</span><span class="o">.</span><span class="n">label</span> <span class="ss">:_destroy</span><span class="p">,</span> <span class="s1">&#39;Remove&#39;</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">  &lt;% end %&gt;</span><span class="o">&lt;</span><span class="sr">/span&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end </span><span class="o">%&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+  <p>O formulário fica com a seguinte aparência:</p>
+
+  <center><img src="/images/2012/08/06/destroy.png" /></center>
+
+  <p>
+    E agora, com auxílio do checkbox, conseguimos também remover permissões.
+    Um único formulário, manipulando uma complexa estrutura de dados associados - Person 1 : 1 UserAccount 1 : N Permission.
+  </p>
+
+  <p>
+    Note que não foi necessário adicionar nenhuma lógica no controller para interpretar argumentos do request dos objetos associados.
+    Apesar de termos sido obrigados a adicionar um checkbox para remoção de permissões, não precisamos de nenhuma lógica customizada de
+    data-binding para apresentar as associações na view. Tudo out-of-the-box, prontinho para usar, um bonus-track desta fantástica framework web que é o Rails!
+  </p>
+
+  <p>
+    No quarto e último post desta série, será mostrada &#8220;a cereja do bolo&#8221;: com um pouquinho de JavaScript, jQuery e Knockout.js,
+    tornaremos a adição de permissões mais dinâmica, além de adicionar dinamicamente o atributo _destroy no request, sem precisar de um checkbox.
+  </p>
+
+  <h3>Referências</h3>
+  <ul>
+    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
+        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
+    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
+        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
+    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
+    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
+        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
+    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
+        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
+  </ul>
+</div>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Fábio L N Miranda</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-08-06T00:00:00-03:00" pubdate data-updated="true">Aug 6<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/rails/'>Rails</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/" data-via="fabiolnm" data-counturl="http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/" >Tweet</a>
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/" title="Previous Post: MultiModel forms, parte 2: One-To-Many">&laquo; MultiModel forms, parte 2: One-To-Many</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/" title="Next Post: MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js">MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/25/especificacoes-de-views-com-minitest/">Especificações de Views com MiniTest</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/21/introducao-a-minitest/">Introdução à MiniTest</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/">MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/">MultiModel forms, parte 3: Nested Forms</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/">MultiModel forms, parte 2: One-To-Many</a>
+      </li>
+    
+  </ul>
+</section>
+
+  
+  <section>
+    <a href="https://github.com/fabiolnm">@fabiolnm</a> on Github
+  </section>
+  
+
+
+<section>
+  
+    <a href="http://twitter.com/fabiolnm" class="twitter-follow-button" data-show-count="false">Follow @fabiolnm</a>
+  
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - Fábio L N Miranda -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'mindshare';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/';
+        var disqus_url = 'http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

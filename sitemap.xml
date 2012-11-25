@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
+    <url>
+        <loc>http://mindshare.blog.br/blog/2012/08/01/um-formulario-multiplos-modelos/</loc>
+        <lastmod>2012-11-19T01:41:12-02:00</lastmod>
+    </url>
+    <url>
+        <loc>http://mindshare.blog.br/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/</loc>
+        <lastmod>2012-11-19T01:41:12-02:00</lastmod>
+    </url>
+    <url>
+        <loc>http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/</loc>
+        <lastmod>2012-11-19T01:41:12-02:00</lastmod>
+    </url>
+    <url>
+        <loc>
+            http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/
+        </loc>
+        <lastmod>2012-11-19T01:41:12-02:00</lastmod>
+    </url>
+    <url>
+        <loc>http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest/</loc>
+        <lastmod>2012-11-21T19:47:43-02:00</lastmod>
+    </url>
+    <url>
+        <loc>http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/</loc>
+        <lastmod>2012-11-25T19:30:54-02:00</lastmod>
+    </url>
+    <url>
+        <loc>http://mindshare.blog.br/blog/archives/</loc>
+        <lastmod>2012-11-25T19:30:54-02:00</lastmod>
+    </url>
+    <url>
+        <loc>http://mindshare.blog.br/</loc>
+        <lastmod>2012-11-25T19:30:54-02:00</lastmod>
+    </url>
+</urlset>

@@ -1,0 +1,822 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js - Mind Share</title>
+  <meta name="author" content="Fábio L N Miranda">
+
+  
+  <meta name="description" content="No terceiro post desta série, foi mostrado que os FormBuilders do Rails são capazes de lidar com Nested Models para a criação de formulários &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Mind Share" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-36584515-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Mind Share</a></h1>
+  
+    <h2>Compartilhando know-how sobre desenvolvimento de software</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:mindshare.blog.br" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="http://www.visualcv.com/fabiolnm" target="_blank">Resume</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">MultiModel Forms, Parte 4: Nested Forms Interativos Usando Knockout.js</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-25T00:00:00-03:00" pubdate data-updated="true">Sep 25<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><div class='post'>
+<p>
+  No terceiro post desta série, foi mostrado que os FormBuilders do Rails são capazes de lidar com Nested Models para
+  a criação de formulários estáticos. Este post apresenta uma maneira client-side interativa de gerar campos Nested Forms.
+</p>
+<!-- MORE -->
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
+      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
+</ul>
+O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+
+<p>
+  Nos posts anteriores desta série, foi mostrado como fazer uso dos Nested Models e Nested Forms,
+  recursos poderosos que o Rails oferece para a edição de entidades relacionadas.
+</p>
+<p>
+  Partindo de um domínio composto por três entidades - Person, User e Permissions - foi mostrado que,
+  numa única chamada person.create(attrs) - onde attrs é um hash contendo atributos dos três modelos obedecendo
+  a uma notação especial - o Rails consegue criar os diferentes objetos que compõem a associação.
+</p>
+<p>
+  Por sua vez, os FormBuilders do Rails podem fazer uso de Nested Models, permitindo prototipar Nested Forms que podem
+  manipular simultaneamente vários objetos relacionados entre si. Neste quarto e último post, será usado o framework
+  Knockout.js para a construção de formulários interativos baseados no Nested Forms.
+</p>
+
+<h2>Knockout.js</h2>
+<p>
+  O Knockout.js é um framework JavaScript que implementa o padrão MVVM (Model-View View-Model). Possui uma documentação
+  didática e abrangente - incluindo um <a href="http://learn.knockoutjs.com/">tutorial interativo</a>!
+</p>
+<p>O exercício deste post será reimplementar a tela abaixo</p>
+<center><img src="/images/2012/08/06/destroy.png" /></center>
+<p>Para que as permissões possam ser adicionadas / removidas de forma interativa:</p>
+<center><img src="/images/2012/09/25/01-form-interativo.png" /></center>
+
+<h3>Knockout.js Setup</h3>
+<h4>Asset Pipeline</h4>
+<p>Graças à gem knockoutjs-rails, o setup é tão simples quanto adicionar uma gem ao projeto:</p>
+<figure class='code'><figcaption><span>Gemfile</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span><span class='line'><span class="n">gem</span> <span class="s1">&#39;knockoutjs-rails&#39;</span><span class="p">,</span> <span class="n">git</span><span class="p">:</span> <span class="s2">&quot;git://github.com/fabiolnm/knockoutjs-rails.git&quot;</span>
+</span><span class='line'><span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>e duas diretivas ao manifesto do asset pipeline:</p>
+<figure class='code'><figcaption><span>app/assets/javascripts/application.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span><span class='line'><span class="sr">//</span><span class="o">=</span> <span class="nb">require</span> <span class="n">knockout</span>
+</span><span class='line'><span class="sr">//</span><span class="o">=</span> <span class="nb">require</span> <span class="n">knockout</span><span class="o">.</span><span class="n">mapping</span>
+</span><span class='line'><span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+<h4>Via tradicional</h4>
+<p>
+  Caso não esteja usando o asset pipeline, segundo as
+  <a href="http://knockoutjs.com/documentation/installation.html">instruções de instalação</a>,
+  pode-se referenciar a biblioteca via CDNs, ou baixar os arquivos em algum diretório do projeto
+  onde possam ser incluídos via diretiva <% javascript_include_tag %>.
+</p>
+
+<h3>ViewModels, Observables e Bindings</h3>
+<p>
+  ViewModels são representações que encapsulam um modelo e suas interações com a view.
+  Um ViewModel pode possuir atributos Observable: a View atualiza-se automagicamente em resposta a alterações nestes atributos.
+  A view também consegue alterar o estado do modelo através dos métodos do view_model.
+</p>
+<p>
+  No exemplo abaixo, PermissionListViewModel encapsula um Lista de Permissões (modelo) num <i>array observável</i>,
+  e disponibiliza métodos add e empty para que a View possa interagir com o modelo.
+</p>
+<figure class='code'><figcaption><span>app/assets/javascripts/people.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">PermissionListViewModel</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span> <span class="o">=</span> <span class="nx">ko</span><span class="p">.</span><span class="nx">observableArray</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">add</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">.</span><span class="nx">add</span><span class="p">({});</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">empty</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">().</span><span class="nx">length</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Note que o ViewModel não possui referência nenhuma aos elementos da View.
+  Toda a ligação é feita de forma declarativa, por meio de data-bindings:
+</p>
+<figure class='code'><figcaption><span>app/views/people/_form.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;table</span> <span class="na">id=</span><span class="s">&quot;permissions_table&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;caption&gt;</span>Permissões<span class="nt">&lt;/caption&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;thead</span> <span class="na">date-bind=</span><span class="s">&quot;ifnot: permissions().length == 0&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;tr&gt;&lt;th&gt;</span>Nível<span class="nt">&lt;/th&gt;&lt;th&gt;</span>Liberações<span class="nt">&lt;/th&gt;&lt;th&gt;</span>Remover<span class="nt">&lt;/th&gt;&lt;/tr&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/thead&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tbody</span> <span class="na">data-bind=</span><span class="s">&quot;foreach: permissions&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;tr&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;td&gt;&lt;select&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;&lt;/option&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;</span>Admin<span class="nt">&lt;/option&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;</span>Logs<span class="nt">&lt;/option&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;</span>Backup<span class="nt">&lt;/option&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/select&gt;&lt;/td&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;td&gt;&lt;select&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;&lt;/option&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;</span>Read-Only<span class="nt">&lt;/option&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;</span>Read-Write<span class="nt">&lt;/option&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;option&gt;</span>Read-Write-Delete<span class="nt">&lt;/option&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/select&gt;&lt;/td&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;td&gt;&lt;input</span> <span class="na">type=</span><span class="s">&quot;checkbox&quot;</span> <span class="nt">/&gt;&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/tr&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tbody&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tfoot&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;tr&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;th</span> <span class="na">colspan=</span><span class="s">&quot;3&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;p</span> <span class="na">data-bind=</span><span class="s">&quot;if: empty()&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>          Clique em Adicionar para conceder permissões.
+</span><span class='line'>        <span class="nt">&lt;/p&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;button</span> <span class="na">data-bind=</span><span class="s">&quot;click: add&quot;</span><span class="nt">&gt;</span>Adicionar<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/tr&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tfoot&gt;</span>
+</span><span class='line'><span class="nt">&lt;/table&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Os bindings são aplicados na chamada ko.applyBindings, que liga um ViewModel às declarações de bindings feitas em um elemento da página:</p>
+<figure class='code'><figcaption><span>app/views/people/_form.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;script&gt;</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">view_model</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">PermissionListViewModel</span><span class="p">();</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">permissions_table</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;#permissions_table&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="nx">ko</span><span class="p">.</span><span class="nx">applyBindings</span><span class="p">(</span><span class="nx">view_model</span><span class="p">,</span> <span class="nx">permissions_table</span><span class="p">);</span>
+</span><span class='line'><span class="nt">&lt;/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Nas linhas 3 e 26, são declarados bindings condicionais:
+  <ul>
+    <li>binding <strong>ifnot</strong>: quando a lista de permissões NÃO estiver vazia, o cabeçalho da tabela é exibido.
+    </li>
+    <li>binding <strong>if</strong>: quando o método viewmodel.empty() retornar true, um parágrafo de instruções é exibido.</li>
+  </ul>
+  <center><img src="/images/2012/09/25/02-lista-permissoes-vazia.png" /></center>
+  Note que podem ser contruídos bindings tanto com expressões (mostrado no binding ifnot) e com métodos do viewmodel (mostrado no binding if).
+</p>
+<p>
+  Na linha 6, é declarado um binding foreach: para cada elemento do array viewmodel.permissions, a view
+  renderiza uma linha na tabela, segundo o template fornecido no corpo de tbody (elemento em que foi feito o binding).
+</p>
+<p>
+  Na linha 29, é declarado um binding click: quando o botão for clicado, o método viewmodel.add é chamado.
+  A view se atualiza automagicamente em resposta à adição de um elemento no array observável, omitindo as
+  instruções iniciais (de quando o array está vazio) e adicionando campos na tabela, para cada adição realizada.
+</p>
+<center><img src="/images/2012/09/25/03-adicionar-permissoes.png" /></center>
+<h3>Bindings de Campos de Formulários</h3>
+<p>O próximo passo é fazer o binding dos campos em cada linha da tabela.</p>
+<h4>Remoção de elementos com checkboks e _destroy binding</h4>
+<p>
+  No <a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">terceiro post</a> desta série,
+  foi mostrado que o rails remove objetos de associações que possuam um atributo _destroy avaliado como true.
+  <a href="http://knockoutjs.com/documentation/observableArrays.html" target="_blank">Influenciado por este comportamento do Rails</a>,
+  o binding foreach omite automaticamente os objetos de um observable array quem tenham um atributo _destroy avaliado como true.
+  Sabendo-se disso, basta adicionar um <strong>checked binding</strong> no checkbox:
+</p>
+<figure class='code'><figcaption><span>Checked binding com valor _destroy, para remoção de elementos da tabela</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;checkbox&quot;</span> <span class="na">data-bind=</span><span class="s">&quot;checked: _destroy&quot;</span> <span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Também é necessário inicializar um atributo _destroy: false, em cada objeto adicionado ao array.</p>
+<figure class='code'><figcaption><span>app/assets/javascripts/people.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">add</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span>
+</span><span class='line'>    <span class="nx">_destroy</span><span class="o">:</span> <span class="kc">false</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Ao clicar no checkbox de uma linha, ela é removida da tabela. Porém surge um comportamento anômalo: quando a tabela fica vazia,
+  o cabeçalho da tabela continua sendo mostrado. O comportamento consistente seria omití-lo e voltar a exibir a instrução
+  de quando o array está vazio.
+</p>
+<p>
+  Isto ocorre pois os elementos não são efetivamente removidos do array - apenas ficam marcados com o atributo _destroy: true.
+  É necessário reescrever o método empty: permissions não está vazia quando pelo menos um elemento no array avalia _destroy como false.
+</p>
+<figure class='code'><figcaption><span>Correção do método empty</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">empty</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">permissions</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">();</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">permissions</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">permissions</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">_destroy</span><span class="p">)</span>
+</span><span class='line'>        <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Outra abordagem para a remoção de elementos é mantê-los visíveis na tabela, mas com um estilo indicando que foram marcados para
+  remoção. Eu particularmente prefiro esta abordagem, pois dá a oportunidade para o usuário de desfazer uma remoção acidental.
+  Para esta abordagem, deve-se reescrever o binding foreach, adicionando um atributo includeDestroyed.
+</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;tbody</span> <span class="na">data-bind=</span><span class="s">&quot;foreach: { data: permissions, includeDestroyed: true }&quot;</span><span class="nt">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Para marcar as linhas removidas, pode-se utilizar um binding style:</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;tr</span> <span class="na">data-bind=</span><span class="s">&quot;style: { backgroundColor: _destroy ? &#39;salmon&#39; : &#39;white&#39; }&quot;</span><span class="nt">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Ou, para não misturar estilos com markup, um binding css.
+  A diferença é que este último adiciona uma classe ao elemento, caso a expressão de binding seja avaliada como verdadeira.
+</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;tr</span> <span class="na">data-bind=</span><span class="s">&quot;css: { removed_row: _destroy }&quot;</span><span class="nt">&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<figure class='code'><figcaption><span>app/assets/stylesheets/people.css.scss</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='css'><span class='line'><span class="nc">.removed_row</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">background-color</span><span class="o">:</span> <span class="nb">salmon</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Notar que, na abordagem de manter visíveis os elementos destroyed, é necessário reverter a implementação inicial do método empty.</p>
+<center><img src="/images/2012/09/25/04-foreach-include-destroyed.png" /></center>
+</div>
+
+<h4>Binding de Select boxes</h4>
+<p>
+  Revendo a listagem do formulário, pode-se perceber que os campos de select já são bastante verbosos, mesmo com um número pequeno de opções.
+  Podemos usar o binding options para deixar o código mais limpo:
+</p>
+<figure class='code'><figcaption><span>app/views/people/_form.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;table</span> <span class="na">id=</span><span class="s">&quot;permissions_table&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;caption&gt;</span>Permissões<span class="nt">&lt;/caption&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;thead</span> <span class="na">date-bind=</span><span class="s">&quot;ifnot: permissions().length == 0&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;tr&gt;&lt;th&gt;</span>Áreas<span class="nt">&lt;/th&gt;&lt;th&gt;</span>Acessos<span class="nt">&lt;/th&gt;&lt;th&gt;</span>Remover<span class="nt">&lt;/th&gt;&lt;/tr&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/thead&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tbody</span> <span class="na">data-bind=</span><span class="s">&quot;foreach: { data: permissions, includeDestroyed: true }&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;tr</span> <span class="na">data-bind=</span><span class="s">&quot;css: { removed_row: _destroy }&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;td&gt;&lt;select</span> <span class="na">data-bind=</span><span class="s">&quot;options: $root.areas, optionsCaption: &#39;Choose...&#39;&quot;</span><span class="nt">&gt;&lt;/select&gt;&lt;/td&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;td&gt;&lt;select</span> <span class="na">data-bind=</span><span class="s">&quot;options: $root.grants, optionsCaption: &#39;Choose...&#39;,</span>
+</span><span class='line'><span class="s">          optionsText: &#39;grant&#39;, optionsValue: &#39;value&#39;&quot;</span><span class="nt">&gt;&lt;/select&gt;&lt;/td&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;td&gt;&lt;input</span> <span class="na">type=</span><span class="s">&quot;checkbox&quot;</span> <span class="na">data-bind=</span><span class="s">&quot;checked: _destroy&quot;</span> <span class="nt">/&gt;&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/tr&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tbody&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tfoot&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;tr&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;th</span> <span class="na">colspan=</span><span class="s">&quot;3&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;p</span> <span class="na">data-bind=</span><span class="s">&quot;if: empty()&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>          Clique em Adicionar para conceder permissões.
+</span><span class='line'>        <span class="nt">&lt;/p&gt;</span>
+</span><span class='line'>        <span class="nt">&lt;button</span> <span class="na">data-bind=</span><span class="s">&quot;click: add&quot;</span><span class="nt">&gt;</span>Adicionar<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/tr&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tfoot&gt;</span>
+</span><span class='line'><span class="nt">&lt;/table&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Movendo as opções para PermissionsListViewModel:</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">PermissionListViewModel</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span> <span class="o">=</span> <span class="nx">ko</span><span class="p">.</span><span class="nx">observableArray</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">areas</span> <span class="o">=</span> <span class="p">[</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span> <span class="s2">&quot;backups&quot;</span><span class="p">,</span> <span class="s2">&quot;logs&quot;</span> <span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">grants</span> <span class="o">=</span> <span class="p">[</span>
+</span><span class='line'>    <span class="p">{</span>  <span class="nx">grant</span><span class="o">:</span> <span class="s2">&quot;Read-Only&quot;</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&quot;R&quot;</span> <span class="p">},</span>
+</span><span class='line'>    <span class="p">{</span>  <span class="nx">grant</span><span class="o">:</span> <span class="s2">&quot;Read-Write&quot;</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&quot;RW&quot;</span> <span class="p">},</span>
+</span><span class='line'>    <span class="p">{</span>  <span class="nx">grant</span><span class="o">:</span> <span class="s2">&quot;Read-Write-Delete&quot;</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&quot;RWD&quot;</span> <span class="p">}</span>
+</span><span class='line'>  <span class="p">];</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Note que as opções podem ser representadas por um array (neste caso, o valor do select box é o próprio texto de cada opção), ou por um hash
+  (o binding deve possuir em optionsText e optionsValue as chaves do hash usadas para resolver o texto e o valor de cada opção do select box).
+  O binding optionsCaption serve para adicionar uma opção default para quando nenhuma opção não estiver selecionada.
+</p>
+<center><img src="/images/2012/09/25/05-option-binding.png" /></center>
+<p>O formulário interativo de permissões já adquiriu sua aparência final, estando no ponto para testar a integração com a aplicação.</p>
+<h4>Nomeando os campos</h4>
+<p>
+  Para que os valores possam ser submetidos, é necessário dar nomes aos campos. No terceiro artigo da série, foi mostrado que a nomenclatura dos
+  campos deve obedecer uma notação especial, cuja construção é de responsabilidade dos FormBuilders. Com o truque abaixo, é possível continuar
+  tirando proveito dos builders nativos:
+</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="sx">%= acc.fields_for :permissions, [Permission.new] do |p| %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;%=</span> <span class="nb">p</span><span class="o">.</span><span class="n">object_name</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">  &lt;%= base_name = p.object_name[0..-4] %&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end </span><span class="o">%&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<center><img src="/images/2012/09/25/06-capture-field-name.png" /></center>
+<p>
+  Ou seja, conseguimos obter o nome-base dos campos, removendo os caracteres &#8220;[0]&#8221; do nome gerado pelo FormBuilder.
+  Todas as vezes que for adicionada uma nova permissão, este nome-base deve ser sufixado de um índice incrementado.
+  O knockout atribuirá o nome do campo via um binding do tipo attr. O formulário fica reescrito por:
+</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="n">tbody</span> <span class="n">data</span><span class="o">-</span><span class="n">bind</span><span class="o">=</span><span class="s2">&quot;foreach: { data: permissions, includeDestroyed: true }&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="n">tr</span> <span class="n">data</span><span class="o">-</span><span class="n">bind</span><span class="o">=</span><span class="s2">&quot;css: { removed_row: _destroy }&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="sx">%= acc.fields_for :permissions, [Permission.new] do |p| %&gt;</span>
+</span><span class='line'><span class="sx">      &lt;% base =</span> <span class="nb">p</span><span class="o">.</span><span class="n">object_name</span><span class="o">[</span><span class="mi">0</span><span class="o">.</span><span class="n">.</span><span class="o">-</span><span class="mi">4</span><span class="o">]</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">      &lt;td&gt;</span><span class="o">&lt;</span><span class="nb">select</span> <span class="n">data</span><span class="o">-</span><span class="n">bind</span><span class="o">=</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="s2">          attr: { name: &#39;&lt;%= base %&gt;[&#39; + index + &#39;][restricted_area]&#39; },</span>
+</span><span class='line'><span class="s2">          options: $root.areas, optionsCaption: &#39;Choose...&#39;&quot;</span><span class="o">&gt;&lt;</span><span class="sr">/select&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="nb">select</span> <span class="n">data</span><span class="o">-</span><span class="n">bind</span><span class="o">=</span><span class="s2">&quot;</span>
+</span><span class='line'><span class="s2">          attr: { name: &#39;&lt;%= base %&gt;[&#39; + index + &#39;][grants]&#39; },</span>
+</span><span class='line'><span class="s2">          options: $root.grants, optionsCaption: &#39;Choose...&#39;,</span>
+</span><span class='line'><span class="s2">          optionsText: &#39;grant&#39;, optionsValue: &#39;value&#39;&quot;</span><span class="o">&gt;&lt;</span><span class="sr">/select&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">input</span> <span class="n">type</span><span class="o">=</span><span class="s2">&quot;checkbox&quot;</span> <span class="n">data</span><span class="o">-</span><span class="n">bind</span><span class="o">=</span><span class="s2">&quot;checked: _destroy,</span>
+</span><span class='line'><span class="s2">          attr: { name: &#39;&lt;%= base %&gt;[&#39; + index + &#39;][_destroy]&#39; }&quot;</span> <span class="sr">/&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="sx">% end %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;/tr&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sr">/tbody&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>E apenas uma pequena modificação é necessária no view model, para gerar índices ao adicionar novos elementos:</p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">add</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">new_index</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">().</span><span class="nx">length</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span>
+</span><span class='line'>    <span class="nx">index</span><span class="o">:</span> <span class="nx">new_index</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">_destroy</span><span class="o">:</span> <span class="kc">false</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>Neste ponto, o formulário está pronto para ser submetido!</p>
+<h3>Exibir e editar associação</h3>
+<p>Para poder editar um registro existente, porém, ainda falta inicializar a tabela de permissões com os dados salvos anteriormente.</p>
+<center><img src="/images/2012/09/25/07-load-permissions.png" /></center>
+<p>
+  Isto pode ser feito com os seguintes passos:
+  <ol>
+    <li>Gerar JSON de permissões e injetar no view model</li>
+    <li>Utilizar plugin knockout.mapping para obter representações observáveis das permissões</li>
+    <li>Adicionar atributos index e _destroy para compatibilizar com os bindings dos campos</li>
+    <li>Declarar value bindings, para inicializar campos com os valores salvos anteriormente</li>
+  </ol>
+</p>
+<figure class='code'><figcaption><span>Passo 1 em _form.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="o">&lt;</span><span class="nx">script</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">current_permissions</span> <span class="o">=</span> <span class="o">&lt;%=</span> <span class="err">@</span><span class="nx">person</span><span class="p">.</span><span class="nx">user_account</span><span class="p">.</span><span class="nx">permissions</span><span class="p">.</span><span class="nx">to_json</span><span class="p">.</span><span class="nx">html_safe</span> <span class="o">%&gt;</span><span class="p">;</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">view_model</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">PermissionListViewModel</span><span class="p">(</span><span class="nx">current_permissions</span><span class="p">);</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">permissions_table</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s2">&quot;#permissions_table&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="nx">ko</span><span class="p">.</span><span class="nx">applyBindings</span><span class="p">(</span><span class="nx">view_model</span><span class="p">,</span> <span class="nx">permissions_table</span><span class="p">);</span>
+</span><span class='line'><span class="o">&lt;</span><span class="err">/script&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<figure class='code'><figcaption><span>Passos 2 e 3 em people.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">PermissionListViewModel</span><span class="p">(</span><span class="nx">permissions</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span> <span class="o">=</span> <span class="nx">ko</span><span class="p">.</span><span class="nx">mapping</span><span class="p">.</span><span class="nx">fromJS</span><span class="p">(</span><span class="nx">permissions</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">for</span><span class="p">(</span><span class="nx">i</span> <span class="k">in</span> <span class="nx">permissions</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="nx">p</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">()[</span><span class="nx">i</span><span class="p">];</span>
+</span><span class='line'>    <span class="nx">p</span><span class="p">.</span><span class="nx">_destroy</span> <span class="o">=</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'>    <span class="nx">p</span><span class="p">.</span><span class="nx">index</span> <span class="o">=</span> <span class="nx">i</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+<figure class='code'><figcaption><span>Passo 4: Value bindings em _form.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="sx">%= acc.fields_for :permissions, [Permission.new] do |p| %&gt;</span>
+</span><span class='line'><span class="sx">  &lt;% base =</span> <span class="nb">p</span><span class="o">.</span><span class="n">object_name</span><span class="o">[</span><span class="mi">0</span><span class="o">.</span><span class="n">.</span><span class="o">-</span><span class="mi">4</span><span class="o">]</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">  &lt;input type=&quot;hidden&quot; data-bind=&quot;value: id,</span>
+</span><span class='line'><span class="sx">      attr: { name: &#39;&lt;%= base %&gt;</span><span class="o">[</span><span class="s1">&#39; + index + &#39;</span><span class="o">][</span><span class="nb">id</span><span class="o">]</span><span class="s1">&#39;&quot; /&gt;</span>
+</span><span class='line'><span class="s1">  &lt;td&gt;&lt;select data-bind=&quot;value: restricted_area,</span>
+</span><span class='line'><span class="s1">      attr: { name: &#39;</span><span class="o">&lt;</span><span class="sx">%= base %&gt;[&#39; + index + &#39;][restricted_area]&#39; },</span>
+</span><span class='line'><span class="sx">      options: $root.areas, optionsCaption: &#39;Choose...&#39;&quot;&gt;&lt;/select&gt;&lt;/td&gt;</span>
+</span><span class='line'><span class="sx">  &lt;td&gt;&lt;select data-bind=</span><span class="s2">&quot;value: grants,</span>
+</span><span class='line'><span class="s2">      attr: { name: &#39;&lt;%= base %&gt;[&#39; + index + &#39;][grants]&#39; },</span>
+</span><span class='line'><span class="s2">      options: $root.grants, optionsCaption: &#39;Choose...&#39;,</span>
+</span><span class='line'><span class="s2">      optionsText: &#39;grant&#39;, optionsValue: &#39;value&#39;&quot;</span><span class="o">&gt;&lt;</span><span class="sr">/select&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="n">input</span> <span class="n">type</span><span class="o">=</span><span class="s2">&quot;checkbox&quot;</span> <span class="n">data</span><span class="o">-</span><span class="n">bind</span><span class="o">=</span><span class="s2">&quot;checked: _destroy,</span>
+</span><span class='line'><span class="s2">      attr: { name: &#39;&lt;%= base %&gt;[&#39; + index + &#39;][_destroy]&#39; }&quot;</span> <span class="sr">/&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end </span><span class="o">%&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>
+  Também é necessário inicializar os values bindings em view_model.add,
+  para que o Knockout possa realizar os value bindings ao clicar no botão:
+</p>
+<figure class='code'><figcaption><span>Inicialização dos value bindings na adição de permissões</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="k">this</span><span class="p">.</span><span class="nx">add</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">new_index</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">().</span><span class="nx">length</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">permissions</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span>
+</span><span class='line'>    <span class="nx">id</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">restricted_area</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">grants</span><span class="o">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">index</span><span class="o">:</span> <span class="nx">new_index</span><span class="p">,</span>
+</span><span class='line'>    <span class="nx">_destroy</span><span class="o">:</span> <span class="kc">false</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+<p>E assim, concluímos esta série de posts:<p>
+<center><img src="/images/2012/09/25/08-working-app.png" /></center>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Fábio L N Miranda</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-25T00:00:00-03:00" pubdate data-updated="true">Sep 25<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/knockout-js/'>Knockout.js</a>, <a class='category' href='/blog/categories/rails/'>Rails</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/" data-via="fabiolnm" data-counturl="http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/" >Tweet</a>
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/" title="Previous Post: MultiModel forms, parte 3: Nested Forms">&laquo; MultiModel forms, parte 3: Nested Forms</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/11/21/introducao-a-minitest/" title="Next Post: Introdução à MiniTest">Introdução à MiniTest &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/25/especificacoes-de-views-com-minitest/">Especificações de Views com MiniTest</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/21/introducao-a-minitest/">Introdução à MiniTest</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/">MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/">MultiModel forms, parte 3: Nested Forms</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/">MultiModel forms, parte 2: One-To-Many</a>
+      </li>
+    
+  </ul>
+</section>
+
+  
+  <section>
+    <a href="https://github.com/fabiolnm">@fabiolnm</a> on Github
+  </section>
+  
+
+
+<section>
+  
+    <a href="http://twitter.com/fabiolnm" class="twitter-follow-button" data-show-count="false">Follow @fabiolnm</a>
+  
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - Fábio L N Miranda -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'mindshare';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/';
+        var disqus_url = 'http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

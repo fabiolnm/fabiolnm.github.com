@@ -1,0 +1,1552 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Rails | Mind Share]]></title>
+  <link href="http://mindshare.blog.br/blog/categories/rails/atom.xml" rel="self"/>
+  <link href="http://mindshare.blog.br/"/>
+  <updated>2012-11-25T20:15:29-02:00</updated>
+  <id>http://mindshare.blog.br/</id>
+  <author>
+    <name><![CDATA[Fábio L N Miranda]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Especificações de Views com MiniTest]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/"/>
+    <updated>2012-11-25T19:30:00-02:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest</id>
+    <content type="html"><![CDATA[<p>As Views representam a Interface do Usuário de uma aplicação. Como tal, ficam sujeitas a frequentes mudanças, orientadas por
+preocupações de usabilidade, de estética ou mesmo de evolução de requisitos.</p>
+
+<p>No Rails, as views normalmente são arquivos html contendo código Ruby focado em apresentar dados para o usuário.
+Via de regra, estes dados provêm de Models que foram recuperados por um Controller. Quando desenvolvemos <em>de fora para dentro</em>
+(<em>outside-in development</em>), as necessidades das views orientam o projeto dos controllers e models, levando a APIs mais
+consistentes e bem alinhadas com o comportamento desejado para a aplicação.</p>
+
+<p>Tamanha a responsabilidade das Views, que elas não deveriam ser ignoradas nas atividades de teste. Este artigo ilustra
+uma abordagem para testar views e alguns pontos que o desenvolvedor deve estar atento quando escreve este tipo de teste.</p>
+
+<!-- more -->
+
+
+<h2>View Specs</h2>
+
+<p>A MiniTest ainda não oferece oficialmente suporte a specs de views. Isto fica evidente por dois motivos:</p>
+
+<ul>
+<li>ao fazer scaffold, seu gerador de código não cria um diretório <code>test/views</code></li>
+<li>não há exemplos de view specs que possam servir de referênca para o desenvolvedor</li>
+</ul>
+
+
+<p>Existe, porém, um esforço nesse sentido, como pode ficar claro
+<a href="https://groups.google.com/forum/?fromgroups=#!topic/minitest-rails/pJQNRZeua3U%5B1-25%5D">nesta thread</a>.
+Estudando um pouco o código-fonte do minitest-rails, é possível encontrar
+<a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/action_view.rb">pistas</a>
+de como possibilitar a escrita de testes de views: se o nome do teste atender à expressão regular <code>/(Helper|View)( ?Test)?\z/i</code>
+este teste será executado como um <code>MiniTest::Rails::ActionView::TestCase</code>.</p>
+
+<p>Partindo do post anterior no qual foi criada uma aplicação de Quiz e foi feito scaffold de <code>Question</code>, crie o arquivo:</p>
+
+<p>``` ruby test/views/questions_view_test.rb
+require 'minitest_helper'</p>
+
+<p>describe 'Questions View Test' do
+  it "is a view spec"
+end
+```</p>
+
+<p>Note que:</p>
+
+<ul>
+<li>a descrição do teste <code>Question View Test</code> obedece à expressão regular de view specs,</li>
+<li>foi fornecido um teste <code>it "is a view spec"</code> mas ainda não foi escrito o código desse teste.</li>
+</ul>
+
+
+<p>Veja a saída de sua execução:</p>
+
+<p>``` bash Terminal
+$ rake minitest:views</p>
+
+<p>Run options: --seed 63869</p>
+
+<h1>Running tests:</h1>
+
+<p>S
+Finished tests in 0.201182s, 4.9706 tests/s, 0.0000 assertions/s.
+1 tests, 0 assertions, 0 failures, 0 errors, 1 skips
+```</p>
+
+<p>O <code>S</code> significa que o teste foi ignorado (s de <em>Skipped</em>).
+Quando um teste é descrito sem uma implementação, a sinalização <code>S</code> indica que ele está pendente. Este recurso é
+muito útil, pois serve para a criação de <em>TODO Lists</em> enquanto são modeladas as especificações de teste da aplicação.</p>
+
+<p>Para que as view specs sejam executadas junto com os demais testes pelo comando <code>rake minitest:all</code>, é necessário
+alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake">variável global MINITEST_TASKS</a>,
+no <code>Rakefile</code>:</p>
+
+<p>``` ruby Rakefile</p>
+
+<h1>!/usr/bin/env rake</h1>
+
+<h1>Add your own tasks in files placed in lib/tasks ending in .rake,</h1>
+
+<h1>for example lib/tasks/capistrano.rake, and they will automatically be available to Rake.</h1>
+
+<p>require File.expand_path('../config/application', <strong>FILE</strong>)</p>
+
+<p>Quizz::Application.load_tasks</p>
+
+<p>MINITEST_TASKS &lt;&lt; "views"
+```</p>
+
+<p>Configurado o MiniTest para rodar view specs, boa hora para comitar no git:</p>
+
+<p><code>bash Terminal
+git add .
+git commit -m "Configura MiniTest para rodar view specs"
+</code></p>
+
+<h2>Afinal, o que testar nas Views?</h2>
+
+<p>É muito importante, em todo tipo de teste, que se tenha um foco claro daquilo que precisa ser testado. Tome-se como exemplo
+uma página de listagem de questões. Pode-se listar facilmente alguns comportamentos para ela:</p>
+
+<ul>
+<li>Quando não houver questão cadastrada
+
+<ul>
+<li>Deve exibir uma mensagem "Nenhuma questão cadastrada"</li>
+<li>Não deve exibir a tabela de questões</li>
+</ul>
+</li>
+<li>Quando houver questões
+
+<ul>
+<li>Não deve exibir a mensagem "Nenhuma questão cadastrada"</li>
+<li>Deve exibir a tabela de questões</li>
+</ul>
+</li>
+</ul>
+
+
+<p>Note que as verificações listadas acima <strong>têm por objetivo testar se a view representa corretamente o estado da aplicação</strong>.
+Ou seja, fornecendo-se para a view os dados num determinado estado (<strong>sem cadastros</strong> ou <strong>com cadastros</strong>), deve-se verificar se
+ela exibe/omite corretamente uma mensagem ou uma tabela.</p>
+
+<p>Os testes podem ser inicialmente escritos na forma de uma <em>TODO List</em>: desta forma tem-se sempre um roteiro de trabalho bem
+definido e fica mais fácil manter o foco na tarefa atual, sempre em <a href="http://improveit.com.br/xp/principios/passos_bebe"><em>passinhos de bebê</em></a>.</p>
+
+<p>``` ruby test/views/questions_view_test.rb
+require 'minitest_helper'</p>
+
+<p>describe 'Questions View Test' do
+  describe "index" do</p>
+
+<pre><code>describe "with no questions" do
+  it "shows empty message"
+  it "omits table"
+end
+
+describe "with saved questions" do
+  it "omits empty message"
+  it "shows table"
+end
+</code></pre>
+
+<p>  end
+end
+```
+Antes de prosseguir com a implementação de cada teste, um commitzinho cai bem:</p>
+
+<p><code>bash Terminal
+git add .
+git commit -m "Adiciona spec inicial de Questions View"
+</code></p>
+
+<h2>E agora, José? Como se testa isso?</h2>
+
+<p>Nas views, quase sempre é preciso atentar para:</p>
+
+<ul>
+<li>Fornecer dados para a view no estado que se deseja verificar;</li>
+<li>Renderizar a view e verificar se ela apresentou corretamente o estado que ela recebeu;
+
+<ul>
+<li>Selecionar elementos de marcação (<em>markup</em>) que têm valor semântico para a aplicação.</li>
+</ul>
+</li>
+</ul>
+
+
+<p>No artigo anterior, via scaffold, foram geradas as views, dentre as quais o foco do teste atual é:</p>
+
+<p>``` html app/views/questions/index.html.erb</p>
+
+<h1>Listing questions</h1>
+
+
+<table>
+  <tr>
+    <th>Title</th>
+    <th>Content</th>
+    <th>Difficulty</th>
+    <th></th>
+    <th></th>
+    <th></th>
+  </tr>
+<% @questions.each do |question| %>
+  <tr>
+    <td><%= question.title %></td>
+    <td><%= question.content %></td>
+    <td><%= question.difficulty %></td>
+    <td><%= link_to 'Show', question %></td>
+    <td><%= link_to 'Edit', edit_question_path(question) %></td>
+    <td><%= link_to 'Destroy', question, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+  </tr>
+<% end %>
+</table>
+
+
+<p>```</p>
+
+<p>Repare bem na linha 11: a view renderiza os dados a partir da variável de instância <code>@questions</code>
+fornecida para ela. É através desta variável, portanto, que será configurado o estado do teste. Veja como
+fica o setup (preparação) do teste:</p>
+
+<p>``` ruby Setup da spec "with no questions"
+...
+describe "with no questions" do
+  before do</p>
+
+<pre><code>@questions = []
+render file: "questions/index"
+puts rendered # apenas para fins de demonstração
+</code></pre>
+
+<p>  end
+  ...
+end
+```</p>
+
+<p>Ao fazer <code>@questions</code> ser um array vazio, coloca-se a variável no estado que se deseja testar
+(<strong>nenhuma questão cadastrada</strong>). Na sequência, o método <code>render</code> renderiza a view <code>questions/index</code>.
+O conteúdo da view pode ser então acessado via chamada <code>rendered</code>.</p>
+
+<p>Por fim, o teste em si, para verificar se o conteúdo renderizado está de acordo com o comportamento esperado:</p>
+
+<p>``` ruby Verificações de conteúdo com assert_select
+it "shows empty message" do
+  assert_select "p.info", "Nenhuma questao cadastrada"
+end</p>
+
+<p>it "omits table" do
+  assert_select "table", 0
+end
+<code>
+O</code>assert_select<code>[pode ser usado de várias formas](http://apidock.com/rails/ActionDispatch/Assertions/SelectorAssertions/assert_select)
+para realizar verificações no conteúdo de</code>rendered```.</p>
+
+<p>No primeiro teste, ele verifica se a view renderizou um parágrafo com a classe CSS <code>.info</code>, e se contém a
+respectiva mensagem.</p>
+
+<p>No segundo, verifica se algum elemento <code>table</code> foi renderizado. Caso afirmativo, o teste falha, pois
+o <code>assert_select</code> recebeu como segundo argumento um número, representando quantas vezes é esperado que
+o elemento <code>table</code> ocorra - neste caso, zero!</p>
+
+<p>Veja a saída dos testes:</p>
+
+<p>``` bash Terminal
+$ rake minitest:views
+Run options: --seed 50168</p>
+
+<h1>Running tests:</h1>
+
+<p>FFSS
+Finished tests in 0.143716s, 27.8327 tests/s, 13.9163 assertions/s.</p>
+
+<p>  1) Failure:
+test_0002_omits table(Questions View Test::index::with no questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:16]:
+Expected exactly 0 elements matching "table", found 1.</p>
+
+<p>  2) Failure:
+test_0001_shows empty message(Questions View Test::index::with no questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:12]:
+Expected at least 1 element matching "p.info", found 0.
+```</p>
+
+<p>Excelente! Com os testes falhando, estamos no <span style="color: red">Vermelho</span> do ciclo
+<span style="color: red">Vermelho</span> / <span style="color: limegreen">Verde</span> / <span style="color: brown">Refatore</span>
+<a href="http://rtiweb.net/engenheiro-software/2011/05/18/tutorial-tdd-%E2%80%93-test-drive-development/#axzz2DGv3nW87"><em>Red/Green/Refactor</em></a>.
+É hora de fornecer <strong><em>a implementação <span style="font-size: larger">mais simples</span></em></strong> que faça os testes passarem:
+``` ruby app/views/questions.index.html.erb</p>
+
+<p class="info">Nenhuma questao cadastrada</p>
+
+
+<p>&lt;% unless @questions.empty? %></p>
+
+<table>
+  ...
+</table>
+
+
+<p>&lt;% end %>
+```</p>
+
+<p>Os testes passam:
+``` bash Terminal
+$ rake minitest:views
+Run options: --seed 54895</p>
+
+<h1>Running tests:</h1>
+
+<p>..SS
+Finished tests in 0.301827s, 13.2526 tests/s, 6.6263 assertions/s.
+4 tests, 2 assertions, 0 failures, 0 errors, 2 skips
+```</p>
+
+<p>Estamos no <span style="color: limegreen">verde</span>, e fazendo progressos! Com gestos de
+<a href="http://www.youtube.com/watch?v=GyT_KyAqDEc#t=70">cavalaria</a>, cantamos: Oppa Commit Time!</p>
+
+<p><code>bash Terminal
+git commit -am "Tratamento da view questions/index quando não há questões cadastradas"
+</code></p>
+
+<p>Repetindo o processo, para o cenário seguinte, o teste fica escrito por:</p>
+
+<p>``` ruby Spec "com questões cadastradas"
+describe "with five questions" do
+  before do</p>
+
+<pre><code>@questions = (1..5).each.collect {|i|
+  question = Question.new title: "Title #{i}",
+    content: "Mussum Impsum #{i}", difficulty: i
+
+  # estamos simulando uma questão salva no banco de dados, logo, precisa ter um id
+  question.id = i
+  question
+}
+render file: "questions/index"
+</code></pre>
+
+<p>  end</p>
+
+<p>  it "omits empty message" do</p>
+
+<pre><code>assert_select "p.info", count: 0,
+  text: "Nenhuma questao cadastrada"
+</code></pre>
+
+<p>  end</p>
+
+<p>  it "shows table" do</p>
+
+<pre><code>assert_select "table" do
+  assert_select "thead tr", 1
+  assert_select "tbody tr", @questions.count
+end
+</code></pre>
+
+<p>  end
+end
+```
+Repare nas verificações:</p>
+
+<ul>
+<li>Para a ausência da mensagem "Nenhuma questão cadastrada": o <code>assert_select</code> recebe um hash,
+com o atributo <code>count</code> informando que são esperados "zero elementos" <code>p.info</code> com o texto citado.</li>
+<li>Para os elementos da tabela: o <code>assert_select</code> permite <strong><em>aninhamento</em> de verificações</strong>, ou seja, uma verificação
+dentro de outra verificação. Primeiro é feita a seleção da tabela - caso ela seja encontrada, aí sim
+verifica-se a presença de linhas da tabela, <code>thead tr</code> e <code>tbody tr</code>.</li>
+</ul>
+
+
+<p>Os testes falham, conforme era de se esperar:
+``` bash Terminal
+$ rake minitest:views
+Run options: --seed 57692</p>
+
+<h1>Running tests:</h1>
+
+<p>FF..
+Finished tests in 0.367636s, 10.8803 tests/s, 13.6004 assertions/s.</p>
+
+<p>  1) Failure:
+test_0002_shows table(Questions View Test::index::with five questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:37]:
+Expected exactly 1 element matching "thead tr", found 0.</p>
+
+<p>  2) Failure:
+test_0001_omits empty message(Questions View Test::index::with five questions) [/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:32]:
+Expected exactly 0 elements matching "p.info", found 1.
+```</p>
+
+<p>Segue a implementação que faz os testes passar:
+``` ruby Versão final de app/views/questions/index.html.erb
+&lt;% if @questions.empty? %>
+  <p class="info">Nenhuma questao cadastrada</p>
+&lt;% else %></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Content</th>
+      <th>Difficulty</th>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </thead>
+<% @questions.each do |question| %>
+  <tbody>
+    <tr>
+      <td><%= question.title %></td>
+      <td><%= question.content %></td>
+      <td><%= question.difficulty %></td>
+      <td><%= link_to 'Show', question %></td>
+      <td><%= link_to 'Edit', edit_question_path(question) %></td>
+      <td><%= link_to 'Destroy', question, method: :delete, data: { confirm: 'Are you sure?' } %></td>
+    </tr>
+  </tbody>
+<% end %>
+</table>
+
+
+<p>&lt;% end %>
+```</p>
+
+<p>E passaram mesmo, ó:
+``` bash Terminal
+$ rake minitest:views
+Run options: --seed 24562</p>
+
+<h1>Running tests:</h1>
+
+<p>....
+Finished tests in 0.118319s, 33.8069 tests/s, 50.7104 assertions/s.
+4 tests, 6 assertions, 0 failures, 0 errors, 0 skips
+```</p>
+
+<p>Por fim, um commitão, só pra variar, mas agora seguido de um push pro GitHub.
+<code>bash Terminal
+git commit -am "Tratamento da view questions/index quando há questões cadastradas"
+git push origin master
+</code></p>
+
+<h2>Considerações Finais</h2>
+
+<h4>Muito teste pra pouco código?</h4>
+
+<p>Neste artigo foram geradas 41 linhas de código de teste, como pode ser visto
+<a href="https://github.com/fabiolnm/quiz/blob/16ea3bf9f236bbd0c4e57b4d4057e19b018e4a6a/test/views/questions_view_test.rb">neste commit</a>. No entanto,
+foram adicionadas apenas <a href="https://github.com/fabiolnm/quiz/commit/16ea3bf9f236bbd0c4e57b4d4057e19b018e4a6a">7 linhas de código na view</a>.
+Uma proporção de 1:6. O custo do código de testes realmente compensa o investimento em escrevê-los?</p>
+
+<p>Tradicionalmente, as aplicações são testadas levantando-se um servidor e fazendo inspeção <em>manual</em> do funcionamento da aplicação, por meio de
+navegação em suas páginas. Muitas aplicações carecem também de longas etapas de homologação, onde cada funcionalidade precisa ser validada
+manualmente a cada release.</p>
+
+<p>O teste automatizado não elimina os testes manuais - vide o artigo <a href="http://railspikes.com/2008/7/11/testing-is-overrated">Testing is Overrated</a> -
+mas ajuda a manter o foco nas funcionalidades relevantes, e tornando a homologação mais ágil, com menos riscos.</p>
+
+<p>Outra forma de pensar é: o Rails fornece muitos recursos que contribuem para o ganho de agilidade e produtividade (por exemplo, desde o scaffold,
+já está disponível uma aplicação funcional, criada com uma única linha de comando). É bastante prudente utilizar com sabedoria essas facilidades,
+e aproveitar o tempo que se ganhou como um bônus para investir em qualidade e confiabilidade dos softwares construídos com esta fantástica framework!</p>
+
+<h4>Em nenhum momento foi aberto o navegador</h4>
+
+<p>Desde que a aplicação Quiz foi criada no post anterior, em nenhum momento foi necessário abrir o navegador. Isso é interessantíssimo:
+consegue-se evoluir as funcionalidades de uma aplicação Web sem a realização de testes manuais, sem a necessidade de navegação humana
+para assegurar que a aplicação está funcionando.</p>
+
+<p>Ao automatizar os testes de views, deve-se procurar um ponto de equilíbrio, onde os testes repetitivos possam ser automatizados, e os testes
+manuais possam ser direcionados e focados nos aspectos mais relevantes/críticos da aplicação.</p>
+
+<h4>Proporção 1:3</h4>
+
+<p>É muito comum em aplicações Rails bem escritas que a relação entre a quantidade de código da aplicação e a quantidade de código de teste da aplicação
+fique em torno de <a href="http://37signals.com/svn/posts/3159-testing-like-the-tsa">1:2 e 1:3</a>.</p>
+
+<p>Se você desenvolvedor ainda não aderiu à disciplina de testes, é melhor começar a se sentir
+<strong style="font-size: larger">CULPADO</strong>, pois está fazendo apenas <strong style="font-size: larger">UM TERÇO</strong> de seu trabalho.</p>
+
+<p>Se você contratante ainda recruta desenvolvedores que não praticam a disciplina de testes, deveria ficar <strong style="font-size: larger">PREOCUPADO</strong>,
+pois está pagando <strong style="font-size: larger">TRÊS VEZES MAIS CARO</strong>, e ainda corre um alto risco de receber um trabalho com baixa qualidade.</p>
+
+<h4>Teste focado e desacoplado</h4>
+
+<p>A <a href="http://guides.rubyonrails.org/getting_started.html#the-mvc-architecture">Arquitetura MVC</a> encoraja uma clara organização de código.
+Os testes de views mostrados neste artigo estão totalmente alinhados com este princípio. Sendo o papel das views apresentar para o usuário
+o estado da aplicação, a preparação (setup) dos testes coloca a aplicação no estado que se deseja testar, sem interação nem com os
+controllers nem com o banco de dados. O teste é, portanto, focado em verificar apenas se a View está cumprindo seu papel.</p>
+
+<p>Este desacoplamento é importantíssimo para a saúde da suíte de testes. Quando o acoplamento é alto, à medida que a aplicação cresce em
+complexidade, é muito comum que uma pequena alteração de código provoque a quebra de muitos testes da suíte. Isto torna caras
+até mesmo pequenas alterações, impactando na agilidade e na produtividade, alguns dos benefícios esperados quando se adota TDD.</p>
+
+<p>No <a href="http://pragprog.com/book/hwcuc/the-cucumber-book">capítulo 6 do Livro do Cucumber, versão P1.0</a>, este sintoma é catalogado como
+<string><em>Funcionalidade Frágil (Brittle Feature)</em></strong>. É uma dívida técnica que tende a aumentar rapidamente, pois quando isso
+ocorre a tendência é tirar os testes do caminho, ou ter menos cuidado na escrita de novos testes.</p>
+
+<h4>Nenhum acesso ao banco de dados</h4>
+
+<p>Em todas as preparações (setups) de teste de views, os objetos de modelos foram instanciados em memória, simulando o estado que eles teriam na
+aplicação. Para simular um objeto "salvo no banco de dados", bastou setar o id do objeto, como se ele tivesse vindo do banco.</p>
+
+<p>Isto torna os testes de views independentes dos arquivos de <a href="http://guides.rubyonrails.org/testing.html#the-low-down-on-fixtures"><em>fixtures</em></a>
+de teste da aplicação. Normalmente esses testes também acabam rodando mais rápido, dado que não é feito nenhum acesso a banco. Isso contribui
+para a rapidez e a saúde da suíte de testes.</p>
+
+<h4>Modelagem Semântica da Página</h4>
+
+<p>Outro benefício de fazer testes de views é que cada página acaba sendo construída de acordo com as preocupações
+semânticas direcionadas pelos testes. Uma mensagem "Nenhum resultado encontrado" parece ficar bem em um parágrafo
+com classe CSS info. Dados provenientes de bancos de dados normalmente se adaptam bem a estruturas tabulares. Mensagens de erro
+normalmente são fortes candidatas a renderizar em listas, e por aí vai.</p>
+
+<p>Este cuidado com organização semântica é importante inclusive no que tange às atividades de SEO. Além disso, é muito
+mais fácil e menos caro um desenvolvedor entregar para um Web Designer um markup pronto, enxuto, para que o Web Designer
+possa focar na criação das folhas de estilo que deixam o sistema mais elegante, do que o contrário - o desenvolvedor
+pegar um design pronto e transformá-lo em algo funcional e que tenha significado para a aplicação.</p>
+
+<p>O <a href="http://www.mezzoblue.com/zengarden/alldesigns/">CSS Zen Garden</a> é um exemplo que vale à pena citar de como é importante
+um sistema ter um markup enxuto e consistente, que os web designers têm a liberdade de estilizar, sem precisar alterar
+o markup.</p>
+
+<h2>Bibliografia</h2>
+
+<ul>
+<li><a href="http://guides.rubyonrails.org/getting_started.html#the-mvc-architecture">The MVC Architecture</a></li>
+<li><a href="http://pragprog.com/book/achbd/the-rspec-book">The RSpec Book, version P2.1, chapter 23</a></li>
+<li><a href="http://apidock.com/rails/ActionDispatch/Assertions/SelectorAssertions/assert_select">API Dock - assert_select</a></li>
+<li><a href="https://github.com/rails/rails/blob/e95b9d6c68b1e0bba3840d18fc0aa94ccf88776d/actionpack/lib/action_view/test_case.rb">ActionView::TestCase - a base para testes de views</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActionView/TestCase/Behavior.html#method-i-locals">ActionView::TestCase::Behavior - a ponte entre as variáveis de instância do teste e da view,
+e que fornece o método rendered</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActionView/Helpers/RenderingHelper.html#method-i-render">Documentação do método render, usado nos testes de views</a></li>
+<li><a href="http://www.mezzoblue.com/zengarden/alldesigns/">CSS Zen Garden</a></li>
+<li><a href="http://railspikes.com/2008/7/11/testing-is-overrated">Testing is Overrated</a></li>
+<li><a href="http://37signals.com/svn/posts/3159-testing-like-the-tsa">Testing like the TSA</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Introdução à MiniTest]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest/"/>
+    <updated>2012-11-21T20:00:00-02:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest</id>
+    <content type="html"><![CDATA[<p>O framework Ruby-on-Rails possui muitas facilidades para a escrita de testes de aplicações web.
+Historicamente, a API Test::Unit provê os recursos básicos, e muitas outras gems surgiram
+para complementar ou mesmo substituir o Test::Unit (vide RSpec, Shoulda, Mocha, etc).</p>
+
+<p>Em 2010, a versão 1.9 do Ruby introduziu uma versão atualizada da Test::Unit, chamada MiniTest.
+Ao mesmo tempo que guarda retrocompatibilidade com o Test::Unit, a MiniTest introduz novos recursos
+à linguagem, sendo a principal delas uma DSL (Domain Specific Language) para escrever testes num
+estilo BDD (Behavior Driven Development), similar à sintaxe do RSpec.</p>
+
+<!-- more -->
+
+
+<p>Isto constitui um passo importante dentro da biblioteca-base do Ruby, agora numa posição mais neutra
+na <a href="http://akitaonrails.com/2011/04/17/a-controversia-test-unit-vs-rspec-cucumber">controvérsia TDD x BDD</a>.
+No Rails 4, a <a href="https://github.com/rails/rails/blob/master/activesupport/lib/active_support/test_case.rb">Test::Unit deverá subclassear MiniTest::Spec</a>,
+para se ter uma idéia de quão significativa é essa mudança.</p>
+
+<h2>Iniciando um Projeto, sem a Test::Unit</h2>
+
+<p>O comando <code>rails new nome_do_projeto</code>, por padrão, cria um diretório com a estrutura padrão do Test::Unit:</p>
+
+<pre><code>▾ test/
+  ▾ fixtures/
+  ▾ functional/
+  ▾ integration/
+  ▾ performance/
+  ▾ unit/
+  test_helper.rb
+</code></pre>
+
+<p>Como pretendemos usar a MiniTest, podemos criar o projeto passando o argumento -T, equivalente a --skip-test-unit,
+ou seja, cria o projeto, mas pulando a criação da estrutura básica do Test::Unit:</p>
+
+<p><code>bash Terminal
+rails new quiz -T
+</code></p>
+
+<p>Criado o projeto, é um bom momento para versionar com o Git
+<code>bash Terminal
+git init
+git add .
+git commit -m "Commit inicial"
+</code></p>
+
+<p>Apesar deste post não ser sobre git, vamos seguir as boas práticas e dar passos pequenos e consistentes,
+comitando cada avanço que seja significativo.</p>
+
+<h2>MiniTest-Rails</h2>
+
+<p>A gem <a href="https://github.com/blowmage/minitest-rails">minitest-rails</a> vem suprindo as extensões necessárias para
+usar a MiniTest em projetos Rails. É necessário adicioná-la ao Gemfile:</p>
+
+<p><code>ruby Gemfile
+group :development, :test do
+  gem 'minitest-rails'
+end
+</code></p>
+
+<p>Em seguida, é necessário instalar a gem com o bundler, e utilizar um rails generator para
+criar o arquivo test/minitest_helper.rb:
+<code>bash Terminal
+bundle install
+rails generate mini_test:install
+</code></p>
+
+<p>Bom momento pra comitar:
+<code>bash Terminal
+git add .
+git commit -m "Instala minitest-rails"
+</code></p>
+
+<p>Podemos então prosseguir para a adição da primeira funcionalidade de um Quiz: a criação de Perguntas.
+Para acelerar o desenvolvimento, nada melhor que utilizar o rails scaffold, que cria toda uma estrutura MVC como
+ponto de partida. Antes de rodar o scaffold, porém, devemos configurar o generator para gerar os testes utilizando
+a DSL do MiniTest::Spec:</p>
+
+<p><code>ruby config/application.rb
+config.generators do |g|
+  g.test_framework :mini_test, spec: true
+end
+</code></p>
+
+<p>Ao rodar o generator:</p>
+
+<p><code>bash Terminal
+rails generate scaffold Question title:string content:text difficulty:integer
+</code></p>
+
+<p>É gerada a estrutura básica da aplicação. Atenção especial para o diretório de testes:</p>
+
+<pre><code>▾ test/
+  ▾ controllers/
+      questions_controller_test.rb
+  ▾ fixtures/
+      questions.yml
+  ▾ helpers/
+      questions_helper_test.rb
+  ▾ models/
+      question_test.rb
+</code></pre>
+
+<p>Foi gerada, portanto, a estrutura da aplicação, e os respectivos testes para os
+Models, Controllers e Views que foram gerados. Antes de mergulhar a fundo em cada um desses testes,
+vale a pena rodar a suite de testes. Primeiro, roda-se a migration de criação da tabela questions no
+banco de dados:</p>
+
+<p><code>bash terminal - execução da migration criada no scaffold
+rake db:migrate
+</code></p>
+
+<p>Uma vez que não haja mais nenhuma migration pendente, os testes podem ser executados com um dos comandos:
+``` bash Terminal
+rake test                 #
+rake minitest             # rodam todos os testes
+rake minitest:all         #</p>
+
+<p>rake minitest:models      # roda apenas os testes de unidade dos models
+rake minitest:helpers     # roda apenas os testes dos helpers das views
+rake minitest:controllers # roda apenas os testes funcionais dos controllers
+```</p>
+
+<p>Veja abaixo saída da execução dos testes. Primeiro são executados os testes de models, depois os helpers e por fim os funcionais.
+Cada <code>.</code> após a linha <code># Running tests</code> é um teste executado com sucesso. Cada <code>F</code>, um teste falhando. Os testes funcionais
+gerados via scaffold são 7, um para cada <a href="http://guides.rubyonrails.org/routing.html#crud-verbs-and-actions">ação de um recurso RESTful</a>.</p>
+
+<p>``` bash Terminal
+$ rake minitest:all</p>
+
+<p>Run options: --seed 27504</p>
+
+<h1>Running tests:</h1>
+
+<p>.
+Finished tests in 0.063599s, 15.7235 tests/s, 15.7235 assertions/s.
+1 tests, 1 assertions, 0 failures, 0 errors, 0 skips</p>
+
+<p>Run options: --seed 3609</p>
+
+<h1>Running tests:</h1>
+
+<p>F
+Finished tests in 0.070579s, 14.1685 tests/s, 14.1685 assertions/s.
+  1) Failure:
+test_0001_must be a real test(QuestionsHelper) [/Users/fabio/workspace/miranti/quizz/test/helpers/questions_helper_test.rb:6]:
+Need real tests
+1 tests, 1 assertions, 1 failures, 0 errors, 0 skips</p>
+
+<p>Run options: --seed 4676</p>
+
+<h1>Running tests:</h1>
+
+<p>.......
+Finished tests in 0.150315s, 46.5689 tests/s, 66.5270 assertions/s.
+7 tests, 10 assertions, 0 failures, 0 errors, 0 skips</p>
+
+<p>Errors running minitest:helpers! #&lt;RuntimeError: Command failed with status (1): [ruby -I"lib:test" -I"/Users/fabio/.rbenv/versions/1.9.3-p286/lib/ruby/gems/1.9.1/gems/rake-10.0.1/lib" "/Users/fabio/.rbenv/versions/1.9.3-p286/lib/ruby/gems/1.9.1/gems/rake-10.0.1/lib/rake/rake_test_loader.rb" "test/helpers/<em>*/</em>_test.rb" ]>
+```</p>
+
+<p>Para finalizar esta parte introdutória, podemos fazer os commits no git:
+``` bash Terminal
+git add config/application.rb
+git commit -m "Configura gerador de código do MiniTest"</p>
+
+<p>git add .
+git commit -m "Adiciona scaffold do modelo Question"
+```</p>
+
+<p>E fazer um push para um repositório remoto, por exemplo o <a href="https://github.com">GitHub</a>:
+<code>bash Terminal
+git remote add origin git@github.com:fabiolnm/quiz.git
+git push -u origin master
+</code></p>
+
+<h2>Conclusão</h2>
+
+<p>Neste post introdutório:</p>
+
+<ul>
+<li>Iniciamos uma aplicação sem a Test::Unit</li>
+<li>Instalamos e configuramos a MiniTest</li>
+<li>Geramos algumas specs via rails scaffolding</li>
+<li>Rodamos os testes com o Rake</li>
+</ul>
+
+
+<p>Nos próximos posts desta série, serão explorados em maior profundidade cada um dos tipos de spec - de models, views e controllers.</p>
+
+<h2>Bibliografia</h2>
+
+<ul>
+<li><a href="http://guides.rubyonrails.org/testing.html">A Guide to Testing Rails Applications</a></li>
+<li><a href="http://www.bootspring.com/2010/09/22/minitest-rubys-test-framework">MiniTest: a framework de teste do Ruby 1.9</a></li>
+<li><a href="http://www.rubyflow.com/items/8037-a-path-to-rails-4-with-minitest-spec">A Path to Rails 4 with MiniTest::Spec</a></li>
+<li><a href="http://metaskills.net/2011/03/26/using-minitest-spec-with-rails">Using MiniTest::Spec with Rails</a></li>
+<li><a href="http://akitaonrails.com/2011/04/17/a-controversia-test-unit-vs-rspec-cucumber">A controvérsia Test::Unit vs RSpec/Cucumber</a></li>
+<li><a href="http://blog.rawonrails.com/2012/01/better-way-of-testing-rails-application.html">A better way of testing Rails application with minitest</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/"/>
+    <updated>2012-09-25T00:00:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js</id>
+    <content type="html"><![CDATA[<div class='post'>
+<p>
+  No terceiro post desta série, foi mostrado que os FormBuilders do Rails são capazes de lidar com Nested Models para
+  a criação de formulários estáticos. Este post apresenta uma maneira client-side interativa de gerar campos Nested Forms.
+</p>
+<!-- MORE -->
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
+      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
+</ul>
+O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+
+<p>
+  Nos posts anteriores desta série, foi mostrado como fazer uso dos Nested Models e Nested Forms,
+  recursos poderosos que o Rails oferece para a edição de entidades relacionadas.
+</p>
+<p>
+  Partindo de um domínio composto por três entidades - Person, User e Permissions - foi mostrado que,
+  numa única chamada person.create(attrs) - onde attrs é um hash contendo atributos dos três modelos obedecendo
+  a uma notação especial - o Rails consegue criar os diferentes objetos que compõem a associação.
+</p>
+<p>
+  Por sua vez, os FormBuilders do Rails podem fazer uso de Nested Models, permitindo prototipar Nested Forms que podem
+  manipular simultaneamente vários objetos relacionados entre si. Neste quarto e último post, será usado o framework
+  Knockout.js para a construção de formulários interativos baseados no Nested Forms.
+</p>
+
+<h2>Knockout.js</h2>
+<p>
+  O Knockout.js é um framework JavaScript que implementa o padrão MVVM (Model-View View-Model). Possui uma documentação
+  didática e abrangente - incluindo um <a href="http://learn.knockoutjs.com/">tutorial interativo</a>!
+</p>
+<p>O exercício deste post será reimplementar a tela abaixo</p>
+<center><img src="http://mindshare.blog.br/images/2012/08/06/destroy.png" /></center>
+<p>Para que as permissões possam ser adicionadas / removidas de forma interativa:</p>
+<center><img src="http://mindshare.blog.br/images/2012/09/25/01-form-interativo.png" /></center>
+
+<h3>Knockout.js Setup</h3>
+<h4>Asset Pipeline</h4>
+<p>Graças à gem knockoutjs-rails, o setup é tão simples quanto adicionar uma gem ao projeto:</p>
+``` ruby Gemfile
+...
+gem 'knockoutjs-rails', git: "git://github.com/fabiolnm/knockoutjs-rails.git"
+...
+```
+<p>e duas diretivas ao manifesto do asset pipeline:</p>
+``` ruby app/assets/javascripts/application.js
+...
+//= require knockout
+//= require knockout.mapping
+...
+```
+<h4>Via tradicional</h4>
+<p>
+  Caso não esteja usando o asset pipeline, segundo as
+  <a href="http://knockoutjs.com/documentation/installation.html">instruções de instalação</a>,
+  pode-se referenciar a biblioteca via CDNs, ou baixar os arquivos em algum diretório do projeto
+  onde possam ser incluídos via diretiva <% javascript_include_tag %>.
+</p>
+
+<h3>ViewModels, Observables e Bindings</h3>
+<p>
+  ViewModels são representações que encapsulam um modelo e suas interações com a view.
+  Um ViewModel pode possuir atributos Observable: a View atualiza-se automagicamente em resposta a alterações nestes atributos.
+  A view também consegue alterar o estado do modelo através dos métodos do view_model.
+</p>
+<p>
+  No exemplo abaixo, PermissionListViewModel encapsula um Lista de Permissões (modelo) num <i>array observável</i>,
+  e disponibiliza métodos add e empty para que a View possa interagir com o modelo.
+</p>
+``` javascript app/assets/javascripts/people.js
+function PermissionListViewModel() {
+  this.permissions = ko.observableArray();
+
+  this.add = function() {
+    this.permissions.add({});
+  }
+
+  this.empty = function() {
+    return this.permissions().length == 0;
+  }
+}
+```
+<p>
+  Note que o ViewModel não possui referência nenhuma aos elementos da View.
+  Toda a ligação é feita de forma declarativa, por meio de data-bindings:
+</p>
+``` html app/views/people/_form.html.erb
+<table id="permissions_table">
+  <caption>Permissões</caption>
+  <thead date-bind="ifnot: permissions().length == 0">
+    <tr><th>Nível</th><th>Liberações</th><th>Remover</th></tr>
+  </thead>
+  <tbody data-bind="foreach: permissions">
+    <tr>
+      <td><select>
+        <option></option>
+        <option>Admin</option>
+        <option>Logs</option>
+        <option>Backup</option>
+      </select></td>
+      <td><select>
+        <option></option>
+        <option>Read-Only</option>
+        <option>Read-Write</option>
+        <option>Read-Write-Delete</option>
+      </select></td>
+      <td><input type="checkbox" /></td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="3">
+        <p data-bind="if: empty()">
+          Clique em Adicionar para conceder permissões.
+        </p>
+        <button data-bind="click: add">Adicionar</button>
+      </th>
+    </tr>
+  </tfoot>
+</table>
+```
+<p>Os bindings são aplicados na chamada ko.applyBindings, que liga um ViewModel às declarações de bindings feitas em um elemento da página:</p>
+```
+<script>
+  var view_model = new PermissionListViewModel();
+  var permissions_table = document.getElementById("#permissions_table");
+  ko.applyBindings(view_model, permissions_table);
+</script>
+```
+<p>
+  Nas linhas 3 e 26, são declarados bindings condicionais:
+  <ul>
+    <li>binding <strong>ifnot</strong>: quando a lista de permissões NÃO estiver vazia, o cabeçalho da tabela é exibido.
+    </li>
+    <li>binding <strong>if</strong>: quando o método viewmodel.empty() retornar true, um parágrafo de instruções é exibido.</li>
+  </ul>
+  <center><img src="http://mindshare.blog.br/images/2012/09/25/02-lista-permissoes-vazia.png" /></center>
+  Note que podem ser contruídos bindings tanto com expressões (mostrado no binding ifnot) e com métodos do viewmodel (mostrado no binding if).
+</p>
+<p>
+  Na linha 6, é declarado um binding foreach: para cada elemento do array viewmodel.permissions, a view
+  renderiza uma linha na tabela, segundo o template fornecido no corpo de tbody (elemento em que foi feito o binding).
+</p>
+<p>
+  Na linha 29, é declarado um binding click: quando o botão for clicado, o método viewmodel.add é chamado.
+  A view se atualiza automagicamente em resposta à adição de um elemento no array observável, omitindo as
+  instruções iniciais (de quando o array está vazio) e adicionando campos na tabela, para cada adição realizada.
+</p>
+<center><img src="http://mindshare.blog.br/images/2012/09/25/03-adicionar-permissoes.png" /></center>
+<h3>Bindings de Campos de Formulários</h3>
+<p>O próximo passo é fazer o binding dos campos em cada linha da tabela.</p>
+<h4>Remoção de elementos com checkboks e _destroy binding</h4>
+<p>
+  No <a href="http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">terceiro post</a> desta série,
+  foi mostrado que o rails remove objetos de associações que possuam um atributo _destroy avaliado como true.
+  <a href="http://knockoutjs.com/documentation/observableArrays.html" target="_blank">Influenciado por este comportamento do Rails</a>,
+  o binding foreach omite automaticamente os objetos de um observable array quem tenham um atributo _destroy avaliado como true.
+  Sabendo-se disso, basta adicionar um <strong>checked binding</strong> no checkbox:
+</p>
+``` html Checked binding com valor _destroy, para remoção de elementos da tabela
+<input type="checkbox" data-bind="checked: _destroy" />
+```
+<p>Também é necessário inicializar um atributo _destroy: false, em cada objeto adicionado ao array.</p>
+``` javascript app/assets/javascripts/people.js
+this.add = function() {
+  this.permissions.push({
+    _destroy: false
+  });
+}
+```
+<p>
+  Ao clicar no checkbox de uma linha, ela é removida da tabela. Porém surge um comportamento anômalo: quando a tabela fica vazia,
+  o cabeçalho da tabela continua sendo mostrado. O comportamento consistente seria omití-lo e voltar a exibir a instrução
+  de quando o array está vazio.
+</p>
+<p>
+  Isto ocorre pois os elementos não são efetivamente removidos do array - apenas ficam marcados com o atributo _destroy: true.
+  É necessário reescrever o método empty: permissions não está vazia quando pelo menos um elemento no array avalia _destroy como false.
+</p>
+``` javascript Correção do método empty
+this.empty = function() {
+  var permissions = this.permissions();
+  for (i = 0; i < permissions.length; i++)
+    if (!permissions[i]._destroy)
+        return false;
+  return true;
+}
+```
+<p>
+  Outra abordagem para a remoção de elementos é mantê-los visíveis na tabela, mas com um estilo indicando que foram marcados para
+  remoção. Eu particularmente prefiro esta abordagem, pois dá a oportunidade para o usuário de desfazer uma remoção acidental.
+  Para esta abordagem, deve-se reescrever o binding foreach, adicionando um atributo includeDestroyed.
+</p>
+``` html
+<tbody data-bind="foreach: { data: permissions, includeDestroyed: true }">
+```
+<p>Para marcar as linhas removidas, pode-se utilizar um binding style:</p>
+``` html
+<tr data-bind="style: { backgroundColor: _destroy ? 'salmon' : 'white' }">
+```
+<p>
+  Ou, para não misturar estilos com markup, um binding css.
+  A diferença é que este último adiciona uma classe ao elemento, caso a expressão de binding seja avaliada como verdadeira.
+</p>
+``` html
+<tr data-bind="css: { removed_row: _destroy }">
+```
+``` css app/assets/stylesheets/people.css.scss
+.removed_row {
+  background-color: salmon
+}
+
+```
+<p>Notar que, na abordagem de manter visíveis os elementos destroyed, é necessário reverter a implementação inicial do método empty.</p>
+<center><img src="http://mindshare.blog.br/images/2012/09/25/04-foreach-include-destroyed.png" /></center>
+</div>
+
+
+
+
+<h4>Binding de Select boxes</h4>
+
+
+<p>
+  Revendo a listagem do formulário, pode-se perceber que os campos de select já são bastante verbosos, mesmo com um número pequeno de opções.
+  Podemos usar o binding options para deixar o código mais limpo:
+</p>
+
+
+<p>``` html app/views/people/_form.html.erb</p>
+
+<table id="permissions_table">
+  <caption>Permissões</caption>
+  <thead date-bind="ifnot: permissions().length == 0">
+    <tr><th>Áreas</th><th>Acessos</th><th>Remover</th></tr>
+  </thead>
+  <tbody data-bind="foreach: { data: permissions, includeDestroyed: true }">
+    <tr data-bind="css: { removed_row: _destroy }">
+      <td><select data-bind="options: $root.areas, optionsCaption: 'Choose...'"></select></td>
+      <td><select data-bind="options: $root.grants, optionsCaption: 'Choose...',
+          optionsText: 'grant', optionsValue: 'value'"></select></td>
+      <td><input type="checkbox" data-bind="checked: _destroy" /></td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <th colspan="3">
+        <p data-bind="if: empty()">
+          Clique em Adicionar para conceder permissões.
+        </p>
+        <button data-bind="click: add">Adicionar</button>
+      </th>
+    </tr>
+  </tfoot>
+</table>
+
+
+<p>```</p>
+
+<p>Movendo as opções para PermissionsListViewModel:</p>
+
+
+<p>``` javascript
+function PermissionListViewModel() {
+  this.permissions = ko.observableArray();</p>
+
+<p>  this.areas = [ "admin", "backups", "logs" ];</p>
+
+<p>  this.grants = [</p>
+
+<pre><code>{  grant: "Read-Only", value: "R" },
+{  grant: "Read-Write", value: "RW" },
+{  grant: "Read-Write-Delete", value: "RWD" }
+</code></pre>
+
+<p>  ];
+  ...
+}
+```</p>
+
+<p>
+  Note que as opções podem ser representadas por um array (neste caso, o valor do select box é o próprio texto de cada opção), ou por um hash
+  (o binding deve possuir em optionsText e optionsValue as chaves do hash usadas para resolver o texto e o valor de cada opção do select box).
+  O binding optionsCaption serve para adicionar uma opção default para quando nenhuma opção não estiver selecionada.
+</p>
+
+
+<center><img src="http://mindshare.blog.br/images/2012/09/25/05-option-binding.png" /></center>
+
+
+<p>O formulário interativo de permissões já adquiriu sua aparência final, estando no ponto para testar a integração com a aplicação.</p>
+
+
+<h4>Nomeando os campos</h4>
+
+
+<p>
+  Para que os valores possam ser submetidos, é necessário dar nomes aos campos. No terceiro artigo da série, foi mostrado que a nomenclatura dos
+  campos deve obedecer uma notação especial, cuja construção é de responsabilidade dos FormBuilders. Com o truque abaixo, é possível continuar
+  tirando proveito dos builders nativos:
+</p>
+
+
+<p><code>ruby
+&lt;%= acc.fields_for :permissions, [Permission.new] do |p| %&gt;
+  &lt;%= p.object_name %&gt;
+  &lt;%= base_name = p.object_name[0..-4] %&gt;
+&lt;% end %&gt;
+</code></p>
+
+<center><img src="http://mindshare.blog.br/images/2012/09/25/06-capture-field-name.png" /></center>
+
+
+<p>
+  Ou seja, conseguimos obter o nome-base dos campos, removendo os caracteres "[0]" do nome gerado pelo FormBuilder.
+  Todas as vezes que for adicionada uma nova permissão, este nome-base deve ser sufixado de um índice incrementado.
+  O knockout atribuirá o nome do campo via um binding do tipo attr. O formulário fica reescrito por:
+</p>
+
+
+<p>``` ruby
+<tbody data-bind="foreach: { data: permissions, includeDestroyed: true }">
+  <tr data-bind="css: { removed_row: _destroy }"></p>
+
+<pre><code>&lt;%= acc.fields_for :permissions, [Permission.new] do |p| %&gt;
+  &lt;% base = p.object_name[0..-4] %&gt;
+  &lt;td&gt;&lt;select data-bind="
+      attr: { name: '&lt;%= base %&gt;[' + index + '][restricted_area]' },
+      options: $root.areas, optionsCaption: 'Choose...'"&gt;&lt;/select&gt;&lt;/td&gt;
+  &lt;td&gt;&lt;select data-bind="
+      attr: { name: '&lt;%= base %&gt;[' + index + '][grants]' },
+      options: $root.grants, optionsCaption: 'Choose...',
+      optionsText: 'grant', optionsValue: 'value'"&gt;&lt;/select&gt;&lt;/td&gt;
+  &lt;td&gt;&lt;input type="checkbox" data-bind="checked: _destroy,
+      attr: { name: '&lt;%= base %&gt;[' + index + '][_destroy]' }" /&gt;&lt;/td&gt;
+&lt;% end %&gt;
+</code></pre>
+
+<p>  </tr>
+</tbody>
+```</p>
+
+<p>E apenas uma pequena modificação é necessária no view model, para gerar índices ao adicionar novos elementos:</p>
+
+
+<p>``` javascript
+this.add = function() {
+  var new_index = this.permissions().length;
+  this.permissions.push({</p>
+
+<pre><code>index: new_index,
+_destroy: false
+</code></pre>
+
+<p>  });
+}
+```</p>
+
+<p>Neste ponto, o formulário está pronto para ser submetido!</p>
+
+
+<h3>Exibir e editar associação</h3>
+
+
+<p>Para poder editar um registro existente, porém, ainda falta inicializar a tabela de permissões com os dados salvos anteriormente.</p>
+
+
+<center><img src="http://mindshare.blog.br/images/2012/09/25/07-load-permissions.png" /></center>
+
+
+<p>
+  Isto pode ser feito com os seguintes passos:
+  <ol>
+    <li>Gerar JSON de permissões e injetar no view model</li>
+    <li>Utilizar plugin knockout.mapping para obter representações observáveis das permissões</li>
+    <li>Adicionar atributos index e _destroy para compatibilizar com os bindings dos campos</li>
+    <li>Declarar value bindings, para inicializar campos com os valores salvos anteriormente</li>
+  </ol>
+</p>
+
+
+<p>``` javascript Passo 1 em _form.html.erb</p>
+
+<script>
+  var current_permissions = <%= @person.user_account.permissions.to_json.html_safe %>;
+  var view_model = new PermissionListViewModel(current_permissions);
+  var permissions_table = document.getElementById("#permissions_table");
+  ko.applyBindings(view_model, permissions_table);
+</script>
+
+
+<p>```</p>
+
+<p>``` javascript Passos 2 e 3 em people.js
+function PermissionListViewModel(permissions) {
+  this.permissions = ko.mapping.fromJS(permissions);
+  for(i in permissions) {</p>
+
+<pre><code>p = this.permissions()[i];
+p._destroy = false;
+p.index = i;
+</code></pre>
+
+<p>  }
+  ...
+}
+```</p>
+
+<p>``` ruby Passo 4: Value bindings em _form.html.erb
+&lt;%= acc.fields_for :permissions, [Permission.new] do |p| %>
+  &lt;% base = p.object_name[0..-4] %>
+  &lt;input type="hidden" data-bind="value: id,</p>
+
+<pre><code>  attr: { name: '&lt;%= base %&gt;[' + index + '][id]'" /&gt;
+</code></pre>
+
+<p>  <td>&lt;select data-bind="value: restricted_area,</p>
+
+<pre><code>  attr: { name: '&lt;%= base %&gt;[' + index + '][restricted_area]' },
+  options: $root.areas, optionsCaption: 'Choose...'"&gt;&lt;/select&gt;&lt;/td&gt;
+</code></pre>
+
+<p>  <td>&lt;select data-bind="value: grants,</p>
+
+<pre><code>  attr: { name: '&lt;%= base %&gt;[' + index + '][grants]' },
+  options: $root.grants, optionsCaption: 'Choose...',
+  optionsText: 'grant', optionsValue: 'value'"&gt;&lt;/select&gt;&lt;/td&gt;
+</code></pre>
+
+<p>  <td>&lt;input type="checkbox" data-bind="checked: _destroy,</p>
+
+<pre><code>  attr: { name: '&lt;%= base %&gt;[' + index + '][_destroy]' }" /&gt;&lt;/td&gt;
+</code></pre>
+
+<p>&lt;% end %>
+```</p>
+
+<p>
+  Também é necessário inicializar os values bindings em view_model.add,
+  para que o Knockout possa realizar os value bindings ao clicar no botão:
+</p>
+
+
+<p>``` javascript Inicialização dos value bindings na adição de permissões
+this.add = function() {
+  var new_index = this.permissions().length;
+  this.permissions.push({</p>
+
+<pre><code>id: "",
+restricted_area: "",
+grants: "",
+index: new_index,
+_destroy: false
+</code></pre>
+
+<p>  });
+}
+```</p>
+
+<p>E assim, concluímos esta série de posts:<p>
+<center><img src="http://mindshare.blog.br/images/2012/09/25/08-working-app.png" /></center>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[MultiModel forms, parte 3: Nested Forms]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/"/>
+    <updated>2012-08-06T00:00:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms</id>
+    <content type="html"><![CDATA[<div class='post'>
+Nos dois primeiros posts desta série, foi mostrado o poder do uso de Nested Models.
+O Rails fornece também view helpers para a construção de views com este recurso.
+<!-- more -->
+Seguem os links dos posts anteriores:
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
+      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
+</ul>
+O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+
+<h2>Nested Forms</h2>
+Os view helpers do rails são capazes de gerar markup especial, aderente à notação dos nested models.
+Veja como pode ser reescrito o formulário (criado no passo de scaffold no primeiro post desta série):
+``` ruby app/views/people/_form.html.erb
+<%= form_for(@person) do |f| %>
+  <div class="field">
+    <%= f.label :name %><br />
+    <%= f.text_field :name %>
+  </div>
+
+  <%= f.fields_for :user_account do |acc| %>
+    <div class="field">
+      <%= acc.label :username %><br />
+      <%= acc.text_field :username %>
+    </div>
+    <div class="field">
+      <%= acc.label :password %><br />
+      <%= acc.password_field :password %>
+    </div>
+
+    <%= acc.fields_for :permissions do |p| %>
+      <div class="field">
+        <%= p.label p.object.restricted_area %>
+        <%= p.hidden_field :restricted_area %>
+        <%= p.select :grants,
+          [ "Read-Only", "Read-Write", "Read-Write-Delete" ],
+          include_blank: true %>
+      </div>
+    <% end %>
+  <% end %>
+
+  <div class="actions">
+    <%= f.submit %>
+  </div>
+<% end %>
+```
+<p>Entre na tela de cadastro (http://localhost:3000/people/new), para visualizar um formulário contendo os campos de Person, UserAccount e Permission:</p>
+
+<center><img src="http://mindshare.blog.br/images/2012/08/06/new_person.png" /></center>
+
+<p>Oops. Apenas os campos de Person estão visíveis. Não é difícil conjecturar o porquê. Ao criar um novo objeto Person, ele não possui um user_account, como pode ser confirmado no console:</p>
+
+``` ruby Inspecionando a conta de usuário de uma Pessoa no rails console
+Person.new.user_account
+ => nil
+```
+
+É necessário sobrescrever o método Person/user_account, para que retorne um novo objeto quando Person não tiver uma conta de usuário associada:
+``` ruby app/models/person.rb
+def user_account
+  @user_account = super
+  @user_account = build_user_account if @user_account.nil?
+  @user_account
+end
+```
+  <p>Isto é suficiente para habilitar os campos de UserAccount:</p>
+
+  <center><img src="http://mindshare.blog.br/images/2012/08/06/user_account.png" /></center>
+
+  <p>Para exibir os campos referentes aos atributos de Permission, criamos um método UserAccount/permissions_types, que pré-instancia as possíveis opções:</p>
+``` ruby app/models/user_account.rb
+def permissions_types
+  hash = {}
+  permissions.each { |p| hash[p.restricted_area] = p }
+
+  [ "admin", "backups", "logs" ].each { |area|
+    hash[area] = Permission.new restricted_area: area unless hash.has_key? area
+  }
+  hash.values
+end
+```
+
+  <p>Note que as duas primeiras linhas "memorizam" associações previamente salvas,
+    enquanto nas linhas seguintes, são construídos novos objetos apenas para as associações que ainda não estiverem presentes.</p>
+  <p>É necessário modificar o formulário para construir os campos de permissões utilizando este método:</p>
+
+``` ruby
+<%= acc.fields_for :permissions, acc.object.permissions_types do |p| %>
+  <div class="field">
+    <%= p.label p.object.restricted_area %>
+    <%= p.hidden_field :restricted_area %>
+    <%= p.select :grants, [ "Read-Only", "Read-Write", "Read-Write-Delete" ], include_blank: true %>
+  </div>
+<% end %>
+```
+
+  <p>Vejamos como ficou:</p>
+  <center><img src="http://mindshare.blog.br/images/2012/08/06/permissions.png" /></center>
+
+  <p>Agora que os campos já estão presentes no formulário, basta salvar um registro:</p>
+  <center><img src="http://mindshare.blog.br/images/2012/08/06/validation.png" /></center>
+
+  <p>
+    Oops... estamos quase lá... Vamos tentar entender o que aconteceu.
+    Com auxílio do Chrome Developer Tools, podemos analisar os dados que são submetidos com o formulário:
+  </p>
+
+  <center><img src="http://mindshare.blog.br/images/2012/08/06/post_data.png" /></center>
+
+Os view helpers do Rails criam campos com nomes que são adequados à sua forma de processar nested models. Se analisarmos o log do controller, vemos que o request foi convertido para um hash, representando estes parâmetros de forma hierárquica (formatei o log para facilitar sua visualização):<br />
+``` ruby
+Started POST "/people" for 127.0.0.1 at 2012-08-05 22:36:11 -0300
+Connecting to database specified by database.yml
+Processing by PeopleController#create as HTML
+Parameters: {
+  "utf8"=>"✓",
+  "authenticity_token"=>"iTFVyyIwp0w2apXT02s+XN3z6PfOFEuUgZRaZWxPegU=",
+  "person"=>{
+    "name"=>"José da Silva",
+    "user_account_attributes"=>{
+      "username"=>"jsilva",
+      "password"=>"[FILTERED]",
+      "permissions_attributes"=>{
+        "0"=>{
+          "restricted_area"=>"admin",
+          "grants"=>"Read-Only"
+        },
+        "1"=>{
+          "restricted_area"=>"backups",
+          "grants"=>""
+        },
+        "2"=>{
+          "restricted_area"=>"logs",
+          "grants"=>"Read-Write"
+        }
+      }
+    }
+  },
+  "commit"=>"Create Person"
+}
+```
+Faz sentido: o rails tentou criar uma permission com o campo grants em branco, mas este campo é obrigatório (vide a parte 2 desta série). É necessário alguma forma de filtrar de permission_attributes os valores que estiverem com grants em branco. Há: Rails possui essa facilidade:<br />
+``` ruby
+accepts_nested_attributes_for :permissions, allow_destroy: true,
+  reject_if: proc { |attrs|  attrs["grants"].blank? }
+```
+
+  <p>Basta este pequeno ajuste em UserAccount para conseguimos salvar o registro, que na figura abaixo, foi reaberto para edição:</p>
+
+  <center><img src="http://mindshare.blog.br/images/2012/08/06/edit_person.png" /></center>
+
+  <p>
+    É incrível: simplesmente funciona! Tudo bem até aqui, já conseguimos salvar.
+    Mas logo descobrimos que o "brinquedo quebra" se tentar remover uma permissão: tente deixar Logs em branco e salvar.
+    Parece que tudo deu certo, mas ao reabrir para edição, a permissão continua lá.
+  </p>
+
+  <p>
+    Isto ocorre pois, após termos adicionado a cláusula reject_if, as permissões em branco passaram a ser rejeitadas.
+    O Rails não tem mais a oportunidade de processá-las. Além disso, vimos nos posts anteriores que, para remover um nested model, é necessário passar
+    <b style="color: blue;">_destroy: true</b> como um de seus parâmetros.
+  </p>
+
+  Pode-se usar um checkbox para adicionar um atributo _destroy:<br />
+``` ruby
+<%= acc.fields_for :permissions, acc.object.permissions_types do |p| %>
+  <%= p.label p.object.restricted_area %>
+  <%= p.hidden_field :restricted_area %>
+  <%= p.select :grants, [ "Read-Only", "Read-Write", "Read-Write-Delete" ], include_blank: true %>
+  <b><span style="color: blue;"><% unless p.object.new_record? %>
+    <%= p.check_box :_destroy %>
+    <%= p.label :_destroy, 'Remove' %>
+  <% end %></span></b>
+<% end %>
+```
+  <p>O formulário fica com a seguinte aparência:</p>
+
+  <center><img src="http://mindshare.blog.br/images/2012/08/06/destroy.png" /></center>
+
+  <p>
+    E agora, com auxílio do checkbox, conseguimos também remover permissões.
+    Um único formulário, manipulando uma complexa estrutura de dados associados - Person 1 : 1 UserAccount 1 : N Permission.
+  </p>
+
+  <p>
+    Note que não foi necessário adicionar nenhuma lógica no controller para interpretar argumentos do request dos objetos associados.
+    Apesar de termos sido obrigados a adicionar um checkbox para remoção de permissões, não precisamos de nenhuma lógica customizada de
+    data-binding para apresentar as associações na view. Tudo out-of-the-box, prontinho para usar, um bonus-track desta fantástica framework web que é o Rails!
+  </p>
+
+  <p>
+    No quarto e último post desta série, será mostrada "a cereja do bolo": com um pouquinho de JavaScript, jQuery e Knockout.js,
+    tornaremos a adição de permissões mais dinâmica, além de adicionar dinamicamente o atributo _destroy no request, sem precisar de um checkbox.
+  </p>
+
+  <h3>Referências</h3>
+  <ul>
+    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
+        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
+    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
+        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
+    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
+    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
+        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
+    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
+        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
+  </ul>
+</div>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[MultiModel forms, parte 2: One-To-Many]]></title>
+    <link href="http://mindshare.blog.br/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/"/>
+    <updated>2012-08-05T00:00:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2012/08/05/multimodel-forms-parte-2-one-to-many</id>
+    <content type="html"><![CDATA[<div class='post'>
+<!-- MORE -->
+Este post é o segundo de uma série de quatro artigos:
+
+<ul>
+  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
+  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
+  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
+  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
+      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
+</ul>
+O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
+
+
+<h2>Nested Models - One-to-Many</h2>
+Segue o modelo utilizado neste tutorial:
+<ul>
+  <li><span style="color: #666666;">Person has one UserAccount (parte 1)</span></li>
+  <li><span style="color: blue;"><b>UserAccount has many Permissions (parte 2)</b></span></li>
+</ul>
+
+Conforme estabelecido na parte 1 desta série, queremos editar UserAccount a partir do model Person. Nesta segunda parte,
+veremos como editar também a partir do model Person a associação one-to-many UserAccount / Permissions. O modelo de permissões será bem simples:
+``` ruby
+rails g model Permission user_account_id:integer restricted_area:string grants:string
+rake db:migrate
+```
+<p>Por fim, resta configurar as validações e relacionamentos nos respectivos models.</p>
+
+<h3>Nested One-to-Many</h3>
+É necessário adicionar uma cláusula has_many em UserAccount, para que esta possa navegar na associação um-para-muitos.
+Também é necessário configurar UserAccount para aceitar os atributos da associação Permission.
+``` ruby
+class UserAccount < ActiveRecord::Base
+  attr_accessible :password, :username, :permissions_attributes
+  validates_presence_of :username, :password, :person
+  belongs_to :person
+  has_many :permissions, inverse_of: :user_account
+  accepts_nested_attributes_for :permissions, allow_destroy: true
+end
+```
+
+Permission possui a chave estrangeira user_account_id (lado belongs_to).
+``` ruby
+class Permission < ActiveRecord::Base
+  attr_accessible :restricted_area
+  validates_presence_of :user_account, :restricted_area, :grants
+  belongs_to :user_account
+end
+```
+
+Façamos alguns testes no console do Rails:
+``` ruby
+u = UserAccount.first
+UserAccount Load (0.2ms) SELECT "user_accounts".* FROM "user_accounts" LIMIT 1
+ => #<UserAccount id: 1, person_id: 1, username: "jsilva", password: "abc123", created_at: "2012-08-05 04:02:34", updated_at: "2012-08-05 04:02:34">
+
+u.update_attributes permissions_attributes: [ { restricted_area: :admin, grants: "Read-Write" }, { restricted_area: :backup, grants: "Read-Only" } ]
+ (0.3ms) begin transaction
+ Person Load (0.3ms) SELECT "people".* FROM "people" WHERE "people"."id" = 1 LIMIT 1
+ UserAccount Load (0.2ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."id" = 1 LIMIT 1
+ UserAccount Load (0.1ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."id" = 1 LIMIT 1
+ SQL (12.6ms) INSERT INTO "permissions" ("created_at", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["grants", "Read-Write"], ["restricted_area", :admin], ["updated_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["user_account_id", 1]]
+ SQL (0.2ms) INSERT INTO "permissions" ("created_at", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["grants", "Read-Only"], ["restricted_area", :backup], ["updated_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["user_account_id", 1]]
+ (58.7ms) commit transaction
+```
+
+No exemplo acima, permissões foram adicionadas a uma conta existente de usuário. É possível ir além: todos os dados de UserAccount e Permission podem ser diretamente manipulados um nível acima, numa chamada de Person:<br />
+
+``` ruby
+p = Person.create name: "João Oliveira", user_account_attributes: {
+  username: "joliv", password: "secret", permissions_attributes: [
+    { restricted_area: "admin", grants: "Read-Write" },
+    { restricted_area: "backups", grants: "Read-Only" }
+  ]
+}
+ (0.1ms) begin transaction
+ (0.0ms) commit transaction
+ (0.1ms) begin transaction
+ SQL (36.8ms) INSERT INTO "people" ("created_at", "name", "updated_at") VALUES (?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["name", "João Oliveira"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00]]
+ SQL (0.6ms) INSERT INTO "user_accounts" ("created_at", "password", "person_id", "updated_at", "username") VALUES (?, ?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["password", "secret"], ["person_id", 3], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["username", "joliv"]]
+ SQL (0.4ms) INSERT INTO "permissions" ("created_at", "grants", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["grants", "Read-Write"], ["restricted_area", "admin"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["user_account_id", 3]]
+ SQL (0.2ms) INSERT INTO "permissions" ("created_at", "grants", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["grants", "Read-Only"], ["restricted_area", "backups"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["user_account_id", 3]]
+ (71.4ms) commit transaction
+```
+  <p>
+    Aprecie o poder deste recurso: uma simples linha de comando, e numa única transação são persistidos 4 objetos: Person, UserAccount e duas Permission. Não pára por aí.
+    Este poder é ainda mais amplo, visto que Rails fornece helpers para construção de formulários com nested models - tema que será abordado na parte 3 desta série.
+  </p>
+  <h3>Referências</h3>
+  <ul>
+    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
+        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
+    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
+        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
+    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
+    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
+        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
+    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
+        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
+  </ul>
+</div>
+
+]]></content>
+  </entry>
+  
+</feed>

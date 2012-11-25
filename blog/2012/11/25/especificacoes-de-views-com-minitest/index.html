@@ -1,0 +1,935 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Especificações de Views com MiniTest - Mind Share</title>
+  <meta name="author" content="Fábio L N Miranda">
+
+  
+  <meta name="description" content="As Views representam a Interface do Usuário de uma aplicação. Como tal, ficam sujeitas a frequentes mudanças, orientadas por
+preocupações de &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Mind Share" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-36584515-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Mind Share</a></h1>
+  
+    <h2>Compartilhando know-how sobre desenvolvimento de software</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:mindshare.blog.br" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="http://www.visualcv.com/fabiolnm" target="_blank">Resume</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Especificações De Views Com MiniTest</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-25T19:30:00-02:00" pubdate data-updated="true">Nov 25<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>As Views representam a Interface do Usuário de uma aplicação. Como tal, ficam sujeitas a frequentes mudanças, orientadas por
+preocupações de usabilidade, de estética ou mesmo de evolução de requisitos.</p>
+
+<p>No Rails, as views normalmente são arquivos html contendo código Ruby focado em apresentar dados para o usuário.
+Via de regra, estes dados provêm de Models que foram recuperados por um Controller. Quando desenvolvemos <em>de fora para dentro</em>
+(<em>outside-in development</em>), as necessidades das views orientam o projeto dos controllers e models, levando a APIs mais
+consistentes e bem alinhadas com o comportamento desejado para a aplicação.</p>
+
+<p>Tamanha a responsabilidade das Views, que elas não deveriam ser ignoradas nas atividades de teste. Este artigo ilustra
+uma abordagem para testar views e alguns pontos que o desenvolvedor deve estar atento quando escreve este tipo de teste.</p>
+
+<!-- more -->
+
+
+<h2>View Specs</h2>
+
+<p>A MiniTest ainda não oferece oficialmente suporte a specs de views. Isto fica evidente por dois motivos:</p>
+
+<ul>
+<li>ao fazer scaffold, seu gerador de código não cria um diretório <code>test/views</code></li>
+<li>não há exemplos de view specs que possam servir de referênca para o desenvolvedor</li>
+</ul>
+
+
+<p>Existe, porém, um esforço nesse sentido, como pode ficar claro
+<a href="https://groups.google.com/forum/?fromgroups=#!topic/minitest-rails/pJQNRZeua3U%5B1-25%5D">nesta thread</a>.
+Estudando um pouco o código-fonte do minitest-rails, é possível encontrar
+<a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/action_view.rb">pistas</a>
+de como possibilitar a escrita de testes de views: se o nome do teste atender à expressão regular <code>/(Helper|View)( ?Test)?\z/i</code>
+este teste será executado como um <code>MiniTest::Rails::ActionView::TestCase</code>.</p>
+
+<p>Partindo do post anterior no qual foi criada uma aplicação de Quiz e foi feito scaffold de <code>Question</code>, crie o arquivo:</p>
+
+<figure class='code'><figcaption><span>test/views/questions_view_test.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="nb">require</span> <span class="s1">&#39;minitest_helper&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">describe</span> <span class="s1">&#39;Questions View Test&#39;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">it</span> <span class="s2">&quot;is a view spec&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note que:</p>
+
+<ul>
+<li>a descrição do teste <code>Question View Test</code> obedece à expressão regular de view specs,</li>
+<li>foi fornecido um teste <code>it "is a view spec"</code> mas ainda não foi escrito o código desse teste.</li>
+</ul>
+
+
+<p>Veja a saída de sua execução:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rake minitest:views
+</span><span class='line'>
+</span><span class='line'>Run options: --seed 63869
+</span><span class='line'><span class="c"># Running tests:</span>
+</span><span class='line'>S
+</span><span class='line'>Finished tests in 0.201182s, 4.9706 tests/s, 0.0000 assertions/s.
+</span><span class='line'>1 tests, 0 assertions, 0 failures, 0 errors, 1 skips
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>O <code>S</code> significa que o teste foi ignorado (s de <em>Skipped</em>).
+Quando um teste é descrito sem uma implementação, a sinalização <code>S</code> indica que ele está pendente. Este recurso é
+muito útil, pois serve para a criação de <em>TODO Lists</em> enquanto são modeladas as especificações de teste da aplicação.</p>
+
+<p>Para que as view specs sejam executadas junto com os demais testes pelo comando <code>rake minitest:all</code>, é necessário
+alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake">variável global MINITEST_TASKS</a>,
+no <code>Rakefile</code>:</p>
+
+<figure class='code'><figcaption><span>Rakefile</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="c1">#!/usr/bin/env rake</span>
+</span><span class='line'><span class="c1"># Add your own tasks in files placed in lib/tasks ending in .rake,</span>
+</span><span class='line'><span class="c1"># for example lib/tasks/capistrano.rake, and they will automatically be available to Rake.</span>
+</span><span class='line'>
+</span><span class='line'><span class="nb">require</span> <span class="no">File</span><span class="o">.</span><span class="n">expand_path</span><span class="p">(</span><span class="s1">&#39;../config/application&#39;</span><span class="p">,</span> <span class="bp">__FILE__</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="no">Quizz</span><span class="o">::</span><span class="no">Application</span><span class="o">.</span><span class="n">load_tasks</span>
+</span><span class='line'>
+</span><span class='line'><span class="no">MINITEST_TASKS</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;views&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Configurado o MiniTest para rodar view specs, boa hora para comitar no git:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git add .
+</span><span class='line'>git commit -m <span class="s2">&quot;Configura MiniTest para rodar view specs&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Afinal, o que testar nas Views?</h2>
+
+<p>É muito importante, em todo tipo de teste, que se tenha um foco claro daquilo que precisa ser testado. Tome-se como exemplo
+uma página de listagem de questões. Pode-se listar facilmente alguns comportamentos para ela:</p>
+
+<ul>
+<li>Quando não houver questão cadastrada
+
+<ul>
+<li>Deve exibir uma mensagem &#8220;Nenhuma questão cadastrada&#8221;</li>
+<li>Não deve exibir a tabela de questões</li>
+</ul>
+</li>
+<li>Quando houver questões
+
+<ul>
+<li>Não deve exibir a mensagem &#8220;Nenhuma questão cadastrada&#8221;</li>
+<li>Deve exibir a tabela de questões</li>
+</ul>
+</li>
+</ul>
+
+
+<p>Note que as verificações listadas acima <strong>têm por objetivo testar se a view representa corretamente o estado da aplicação</strong>.
+Ou seja, fornecendo-se para a view os dados num determinado estado (<strong>sem cadastros</strong> ou <strong>com cadastros</strong>), deve-se verificar se
+ela exibe/omite corretamente uma mensagem ou uma tabela.</p>
+
+<p>Os testes podem ser inicialmente escritos na forma de uma <em>TODO List</em>: desta forma tem-se sempre um roteiro de trabalho bem
+definido e fica mais fácil manter o foco na tarefa atual, sempre em <a href="http://improveit.com.br/xp/principios/passos_bebe"><em>passinhos de bebê</em></a>.</p>
+
+<figure class='code'><figcaption><span>test/views/questions_view_test.rb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="nb">require</span> <span class="s1">&#39;minitest_helper&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">describe</span> <span class="s1">&#39;Questions View Test&#39;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">describe</span> <span class="s2">&quot;index&quot;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">describe</span> <span class="s2">&quot;with no questions&quot;</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">it</span> <span class="s2">&quot;shows empty message&quot;</span>
+</span><span class='line'>      <span class="n">it</span> <span class="s2">&quot;omits table&quot;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">describe</span> <span class="s2">&quot;with saved questions&quot;</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">it</span> <span class="s2">&quot;omits empty message&quot;</span>
+</span><span class='line'>      <span class="n">it</span> <span class="s2">&quot;shows table&quot;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Antes de prosseguir com a implementação de cada teste, um commitzinho cai bem:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git add .
+</span><span class='line'>git commit -m <span class="s2">&quot;Adiciona spec inicial de Questions View&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>E agora, José? Como se testa isso?</h2>
+
+<p>Nas views, quase sempre é preciso atentar para:</p>
+
+<ul>
+<li>Fornecer dados para a view no estado que se deseja verificar;</li>
+<li>Renderizar a view e verificar se ela apresentou corretamente o estado que ela recebeu;
+
+<ul>
+<li>Selecionar elementos de marcação (<em>markup</em>) que têm valor semântico para a aplicação.</li>
+</ul>
+</li>
+</ul>
+
+
+<p>No artigo anterior, via scaffold, foram geradas as views, dentre as quais o foco do teste atual é:</p>
+
+<figure class='code'><figcaption><span>app/views/questions/index.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;h1&gt;</span>Listing questions<span class="nt">&lt;/h1&gt;</span>
+</span><span class='line'><span class="nt">&lt;table&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;tr&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;th&gt;</span>Title<span class="nt">&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;th&gt;</span>Content<span class="nt">&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;th&gt;</span>Difficulty<span class="nt">&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;th&gt;&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;th&gt;&lt;/th&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;th&gt;&lt;/th&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tr&gt;</span>
+</span><span class='line'><span class="err">&lt;</span>% @questions.each do |question| %&gt;
+</span><span class='line'>  <span class="nt">&lt;tr&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;td&gt;</span><span class="err">&lt;</span>%= question.title %&gt;<span class="nt">&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;td&gt;</span><span class="err">&lt;</span>%= question.content %&gt;<span class="nt">&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;td&gt;</span><span class="err">&lt;</span>%= question.difficulty %&gt;<span class="nt">&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;td&gt;</span><span class="err">&lt;</span>%= link_to &#39;Show&#39;, question %&gt;<span class="nt">&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;td&gt;</span><span class="err">&lt;</span>%= link_to &#39;Edit&#39;, edit_question_path(question) %&gt;<span class="nt">&lt;/td&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;td&gt;</span><span class="err">&lt;</span>%= link_to &#39;Destroy&#39;, question, method: :delete, data: { confirm: &#39;Are you sure?&#39; } %&gt;<span class="nt">&lt;/td&gt;</span>
+</span><span class='line'>  <span class="nt">&lt;/tr&gt;</span>
+</span><span class='line'><span class="err">&lt;</span>% end %&gt;
+</span><span class='line'><span class="nt">&lt;/table&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Repare bem na linha 11: a view renderiza os dados a partir da variável de instância <code>@questions</code>
+fornecida para ela. É através desta variável, portanto, que será configurado o estado do teste. Veja como
+fica o setup (preparação) do teste:</p>
+
+<figure class='code'><figcaption><span>Setup da spec &#8220;with no questions&#8221;</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span><span class='line'><span class="n">describe</span> <span class="s2">&quot;with no questions&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">before</span> <span class="k">do</span>
+</span><span class='line'>    <span class="vi">@questions</span> <span class="o">=</span> <span class="o">[]</span>
+</span><span class='line'>    <span class="n">render</span> <span class="n">file</span><span class="p">:</span> <span class="s2">&quot;questions/index&quot;</span>
+</span><span class='line'>    <span class="nb">puts</span> <span class="n">rendered</span> <span class="c1"># apenas para fins de demonstração</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>  <span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ao fazer <code>@questions</code> ser um array vazio, coloca-se a variável no estado que se deseja testar
+(<strong>nenhuma questão cadastrada</strong>). Na sequência, o método <code>render</code> renderiza a view <code>questions/index</code>.
+O conteúdo da view pode ser então acessado via chamada <code>rendered</code>.</p>
+
+<p>Por fim, o teste em si, para verificar se o conteúdo renderizado está de acordo com o comportamento esperado:</p>
+
+<figure class='code'><figcaption><span>Verificações de conteúdo com assert_select</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">it</span> <span class="s2">&quot;shows empty message&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">assert_select</span> <span class="s2">&quot;p.info&quot;</span><span class="p">,</span> <span class="s2">&quot;Nenhuma questao cadastrada&quot;</span>
+</span><span class='line'><span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">it</span> <span class="s2">&quot;omits table&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">assert_select</span> <span class="s2">&quot;table&quot;</span><span class="p">,</span> <span class="mi">0</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>O <code>assert_select</code> <a href="http://apidock.com/rails/ActionDispatch/Assertions/SelectorAssertions/assert_select">pode ser usado de várias formas</a>
+para realizar verificações no conteúdo de <code>rendered</code>.</p>
+
+<p>No primeiro teste, ele verifica se a view renderizou um parágrafo com a classe CSS <code>.info</code>, e se contém a
+respectiva mensagem.</p>
+
+<p>No segundo, verifica se algum elemento <code>table</code> foi renderizado. Caso afirmativo, o teste falha, pois
+o <code>assert_select</code> recebeu como segundo argumento um número, representando quantas vezes é esperado que
+o elemento <code>table</code> ocorra - neste caso, zero!</p>
+
+<p>Veja a saída dos testes:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rake minitest:views
+</span><span class='line'>Run options: --seed 50168
+</span><span class='line'><span class="c"># Running tests:</span>
+</span><span class='line'>FFSS
+</span><span class='line'>Finished tests in 0.143716s, 27.8327 tests/s, 13.9163 assertions/s.
+</span><span class='line'>
+</span><span class='line'>  1<span class="o">)</span> Failure:
+</span><span class='line'>test_0002_omits table<span class="o">(</span>Questions View Test::index::with no questions<span class="o">)</span> <span class="o">[</span>/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:16<span class="o">]</span>:
+</span><span class='line'>Expected exactly 0 elements matching <span class="s2">&quot;table&quot;</span>, found 1.
+</span><span class='line'>
+</span><span class='line'>  2<span class="o">)</span> Failure:
+</span><span class='line'>test_0001_shows empty message<span class="o">(</span>Questions View Test::index::with no questions<span class="o">)</span> <span class="o">[</span>/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:12<span class="o">]</span>:
+</span><span class='line'>Expected at least 1 element matching <span class="s2">&quot;p.info&quot;</span>, found 0.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excelente! Com os testes falhando, estamos no <span style="color: red">Vermelho</span> do ciclo
+<span style="color: red">Vermelho</span> / <span style="color: limegreen">Verde</span> / <span style="color: brown">Refatore</span>
+<a href="http://rtiweb.net/engenheiro-software/2011/05/18/tutorial-tdd-%E2%80%93-test-drive-development/#axzz2DGv3nW87"><em>Red/Green/Refactor</em></a>.
+É hora de fornecer <strong><em>a implementação <span style="font-size: larger">mais simples</span></em></strong> que faça os testes passarem:</p>
+
+<figure class='code'><figcaption><span>app/views/questions.index.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="nb">p</span> <span class="n">class</span><span class="o">=</span><span class="s2">&quot;info&quot;</span><span class="o">&gt;</span><span class="no">Nenhuma</span> <span class="n">questao</span> <span class="n">cadastrada</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+</span><span class='line'><span class="sr">&lt;% unless @questions.empty? %&gt;</span>
+</span><span class='line'><span class="sr">&lt;table&gt;</span>
+</span><span class='line'><span class="sr">  ...</span>
+</span><span class='line'><span class="sr">&lt;/</span><span class="n">table</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end </span><span class="o">%&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Os testes passam:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rake minitest:views
+</span><span class='line'>Run options: --seed 54895
+</span><span class='line'><span class="c"># Running tests:</span>
+</span><span class='line'>..SS
+</span><span class='line'>Finished tests in 0.301827s, 13.2526 tests/s, 6.6263 assertions/s.
+</span><span class='line'>4 tests, 2 assertions, 0 failures, 0 errors, 2 skips
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Estamos no <span style="color: limegreen">verde</span>, e fazendo progressos! Com gestos de
+<a href="http://www.youtube.com/watch?v=GyT_KyAqDEc#t=70">cavalaria</a>, cantamos: Oppa Commit Time!</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git commit -am <span class="s2">&quot;Tratamento da view questions/index quando não há questões cadastradas&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Repetindo o processo, para o cenário seguinte, o teste fica escrito por:</p>
+
+<figure class='code'><figcaption><span>Spec &#8220;com questões cadastradas&#8221;</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">describe</span> <span class="s2">&quot;with five questions&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">before</span> <span class="k">do</span>
+</span><span class='line'>    <span class="vi">@questions</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">.</span><span class="n">.</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">each</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span><span class="o">|</span><span class="n">i</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">question</span> <span class="o">=</span> <span class="no">Question</span><span class="o">.</span><span class="n">new</span> <span class="n">title</span><span class="p">:</span> <span class="s2">&quot;Title </span><span class="si">#{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+</span><span class='line'>        <span class="n">content</span><span class="p">:</span> <span class="s2">&quot;Mussum Impsum </span><span class="si">#{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">difficulty</span><span class="p">:</span> <span class="n">i</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1"># estamos simulando uma questão salva no banco de dados, logo, precisa ter um id</span>
+</span><span class='line'>      <span class="n">question</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">i</span>
+</span><span class='line'>      <span class="n">question</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">render</span> <span class="n">file</span><span class="p">:</span> <span class="s2">&quot;questions/index&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">it</span> <span class="s2">&quot;omits empty message&quot;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">assert_select</span> <span class="s2">&quot;p.info&quot;</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'>      <span class="n">text</span><span class="p">:</span> <span class="s2">&quot;Nenhuma questao cadastrada&quot;</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">it</span> <span class="s2">&quot;shows table&quot;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">assert_select</span> <span class="s2">&quot;table&quot;</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">assert_select</span> <span class="s2">&quot;thead tr&quot;</span><span class="p">,</span> <span class="mi">1</span>
+</span><span class='line'>      <span class="n">assert_select</span> <span class="s2">&quot;tbody tr&quot;</span><span class="p">,</span> <span class="vi">@questions</span><span class="o">.</span><span class="n">count</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Repare nas verificações:</p>
+
+<ul>
+<li>Para a ausência da mensagem &#8220;Nenhuma questão cadastrada&#8221;: o <code>assert_select</code> recebe um hash,
+com o atributo <code>count</code> informando que são esperados &#8220;zero elementos&#8221; <code>p.info</code> com o texto citado.</li>
+<li>Para os elementos da tabela: o <code>assert_select</code> permite <strong><em>aninhamento</em> de verificações</strong>, ou seja, uma verificação
+dentro de outra verificação. Primeiro é feita a seleção da tabela - caso ela seja encontrada, aí sim
+verifica-se a presença de linhas da tabela, <code>thead tr</code> e <code>tbody tr</code>.</li>
+</ul>
+
+
+<p>Os testes falham, conforme era de se esperar:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rake minitest:views
+</span><span class='line'>Run options: --seed 57692
+</span><span class='line'><span class="c"># Running tests:</span>
+</span><span class='line'>FF..
+</span><span class='line'>Finished tests in 0.367636s, 10.8803 tests/s, 13.6004 assertions/s.
+</span><span class='line'>
+</span><span class='line'>  1<span class="o">)</span> Failure:
+</span><span class='line'>test_0002_shows table<span class="o">(</span>Questions View Test::index::with five questions<span class="o">)</span> <span class="o">[</span>/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:37<span class="o">]</span>:
+</span><span class='line'>Expected exactly 1 element matching <span class="s2">&quot;thead tr&quot;</span>, found 0.
+</span><span class='line'>
+</span><span class='line'>  2<span class="o">)</span> Failure:
+</span><span class='line'>test_0001_omits empty message<span class="o">(</span>Questions View Test::index::with five questions<span class="o">)</span> <span class="o">[</span>/Users/fabio/workspace/miranti/quizz/test/views/questions_view_test.rb:32<span class="o">]</span>:
+</span><span class='line'>Expected exactly 0 elements matching <span class="s2">&quot;p.info&quot;</span>, found 1.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Segue a implementação que faz os testes passar:</p>
+
+<figure class='code'><figcaption><span>Versão final de app/views/questions/index.html.erb</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="o">&lt;</span><span class="sx">% if </span><span class="vi">@questions</span><span class="o">.</span><span class="n">empty?</span> <span class="sx">%&gt;</span>
+</span><span class='line'><span class="sx">  &lt;p class=&quot;info&quot;&gt;</span><span class="no">Nenhuma</span> <span class="n">questao</span> <span class="n">cadastrada</span><span class="o">&lt;</span><span class="sr">/p&gt;</span>
+</span><span class='line'><span class="sr">&lt;% else %&gt;</span>
+</span><span class='line'><span class="sr">&lt;table&gt;</span>
+</span><span class='line'><span class="sr">  &lt;thead&gt;</span>
+</span><span class='line'><span class="sr">    &lt;tr&gt;</span>
+</span><span class='line'><span class="sr">      &lt;th&gt;Title&lt;/</span><span class="n">th</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">th</span><span class="o">&gt;</span><span class="no">Content</span><span class="o">&lt;</span><span class="sr">/th&gt;</span>
+</span><span class='line'><span class="sr">      &lt;th&gt;Difficulty&lt;/</span><span class="n">th</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">th</span><span class="o">&gt;&lt;</span><span class="sr">/th&gt;</span>
+</span><span class='line'><span class="sr">      &lt;th&gt;&lt;/</span><span class="n">th</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">th</span><span class="o">&gt;&lt;</span><span class="sr">/th&gt;</span>
+</span><span class='line'><span class="sr">    &lt;/</span><span class="n">tr</span><span class="o">&gt;</span>
+</span><span class='line'>  <span class="o">&lt;</span><span class="sr">/thead&gt;</span>
+</span><span class='line'><span class="sr">&lt;% @questions.each do |question| %&gt;</span>
+</span><span class='line'><span class="sr">  &lt;tbody&gt;</span>
+</span><span class='line'><span class="sr">    &lt;tr&gt;</span>
+</span><span class='line'><span class="sr">      &lt;td&gt;&lt;%= question.title %&gt;&lt;/</span><span class="n">td</span><span class="o">&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="sx">%= question.content %&gt;&lt;/td&gt;</span>
+</span><span class='line'><span class="sx">      &lt;td&gt;&lt;%=</span> <span class="n">question</span><span class="o">.</span><span class="n">difficulty</span> <span class="sx">%&gt;&lt;/td&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">td</span><span class="o">&gt;&lt;</span><span class="sx">%= link_to &#39;Show&#39;, question %&gt;&lt;/td&gt;</span>
+</span><span class='line'><span class="sx">      &lt;td&gt;&lt;%=</span> <span class="n">link_to</span> <span class="s1">&#39;Edit&#39;</span><span class="p">,</span> <span class="n">edit_question_path</span><span class="p">(</span><span class="n">question</span><span class="p">)</span> <span class="sx">%&gt;&lt;/td&gt;</span>
+</span><span class='line'>      <span class="o">&lt;</span><span class="n">td</span><span class="o">&gt;&lt;%=</span> <span class="n">link_to</span> <span class="s1">&#39;Destroy&#39;</span><span class="p">,</span> <span class="n">question</span><span class="p">,</span> <span class="nb">method</span><span class="p">:</span> <span class="ss">:delete</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="p">{</span> <span class="n">confirm</span><span class="p">:</span> <span class="s1">&#39;Are you sure?&#39;</span> <span class="p">}</span> <span class="sx">%&gt;&lt;/td&gt;</span>
+</span><span class='line'>    <span class="o">&lt;</span><span class="sr">/tr&gt;</span>
+</span><span class='line'><span class="sr">  &lt;/</span><span class="n">tbody</span><span class="o">&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end %&gt;</span>
+</span><span class='line'><span class="sx">&lt;/table&gt;</span>
+</span><span class='line'><span class="o">&lt;</span><span class="sx">% end </span><span class="o">%&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>E passaram mesmo, ó:</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>rake minitest:views
+</span><span class='line'>Run options: --seed 24562
+</span><span class='line'><span class="c"># Running tests:</span>
+</span><span class='line'>....
+</span><span class='line'>Finished tests in 0.118319s, 33.8069 tests/s, 50.7104 assertions/s.
+</span><span class='line'>4 tests, 6 assertions, 0 failures, 0 errors, 0 skips
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Por fim, um commitão, só pra variar, mas agora seguido de um push pro GitHub.</p>
+
+<figure class='code'><figcaption><span>Terminal</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>git commit -am <span class="s2">&quot;Tratamento da view questions/index quando há questões cadastradas&quot;</span>
+</span><span class='line'>git push origin master
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Considerações Finais</h2>
+
+<h4>Muito teste pra pouco código?</h4>
+
+<p>Neste artigo foram geradas 41 linhas de código de teste, como pode ser visto
+<a href="https://github.com/fabiolnm/quiz/blob/16ea3bf9f236bbd0c4e57b4d4057e19b018e4a6a/test/views/questions_view_test.rb">neste commit</a>. No entanto,
+foram adicionadas apenas <a href="https://github.com/fabiolnm/quiz/commit/16ea3bf9f236bbd0c4e57b4d4057e19b018e4a6a">7 linhas de código na view</a>.
+Uma proporção de 1:6. O custo do código de testes realmente compensa o investimento em escrevê-los?</p>
+
+<p>Tradicionalmente, as aplicações são testadas levantando-se um servidor e fazendo inspeção <em>manual</em> do funcionamento da aplicação, por meio de
+navegação em suas páginas. Muitas aplicações carecem também de longas etapas de homologação, onde cada funcionalidade precisa ser validada
+manualmente a cada release.</p>
+
+<p>O teste automatizado não elimina os testes manuais - vide o artigo <a href="http://railspikes.com/2008/7/11/testing-is-overrated">Testing is Overrated</a> -
+mas ajuda a manter o foco nas funcionalidades relevantes, e tornando a homologação mais ágil, com menos riscos.</p>
+
+<p>Outra forma de pensar é: o Rails fornece muitos recursos que contribuem para o ganho de agilidade e produtividade (por exemplo, desde o scaffold,
+já está disponível uma aplicação funcional, criada com uma única linha de comando). É bastante prudente utilizar com sabedoria essas facilidades,
+e aproveitar o tempo que se ganhou como um bônus para investir em qualidade e confiabilidade dos softwares construídos com esta fantástica framework!</p>
+
+<h4>Em nenhum momento foi aberto o navegador</h4>
+
+<p>Desde que a aplicação Quiz foi criada no post anterior, em nenhum momento foi necessário abrir o navegador. Isso é interessantíssimo:
+consegue-se evoluir as funcionalidades de uma aplicação Web sem a realização de testes manuais, sem a necessidade de navegação humana
+para assegurar que a aplicação está funcionando.</p>
+
+<p>Ao automatizar os testes de views, deve-se procurar um ponto de equilíbrio, onde os testes repetitivos possam ser automatizados, e os testes
+manuais possam ser direcionados e focados nos aspectos mais relevantes/críticos da aplicação.</p>
+
+<h4>Proporção 1:3</h4>
+
+<p>É muito comum em aplicações Rails bem escritas que a relação entre a quantidade de código da aplicação e a quantidade de código de teste da aplicação
+fique em torno de <a href="http://37signals.com/svn/posts/3159-testing-like-the-tsa">1:2 e 1:3</a>.</p>
+
+<p>Se você desenvolvedor ainda não aderiu à disciplina de testes, é melhor começar a se sentir
+<strong style="font-size: larger">CULPADO</strong>, pois está fazendo apenas <strong style="font-size: larger">UM TERÇO</strong> de seu trabalho.</p>
+
+<p>Se você contratante ainda recruta desenvolvedores que não praticam a disciplina de testes, deveria ficar <strong style="font-size: larger">PREOCUPADO</strong>,
+pois está pagando <strong style="font-size: larger">TRÊS VEZES MAIS CARO</strong>, e ainda corre um alto risco de receber um trabalho com baixa qualidade.</p>
+
+<h4>Teste focado e desacoplado</h4>
+
+<p>A <a href="http://guides.rubyonrails.org/getting_started.html#the-mvc-architecture">Arquitetura MVC</a> encoraja uma clara organização de código.
+Os testes de views mostrados neste artigo estão totalmente alinhados com este princípio. Sendo o papel das views apresentar para o usuário
+o estado da aplicação, a preparação (setup) dos testes coloca a aplicação no estado que se deseja testar, sem interação nem com os
+controllers nem com o banco de dados. O teste é, portanto, focado em verificar apenas se a View está cumprindo seu papel.</p>
+
+<p>Este desacoplamento é importantíssimo para a saúde da suíte de testes. Quando o acoplamento é alto, à medida que a aplicação cresce em
+complexidade, é muito comum que uma pequena alteração de código provoque a quebra de muitos testes da suíte. Isto torna caras
+até mesmo pequenas alterações, impactando na agilidade e na produtividade, alguns dos benefícios esperados quando se adota TDD.</p>
+
+<p>No <a href="http://pragprog.com/book/hwcuc/the-cucumber-book">capítulo 6 do Livro do Cucumber, versão P1.0</a>, este sintoma é catalogado como
+<string><em>Funcionalidade Frágil (Brittle Feature)</em></strong>. É uma dívida técnica que tende a aumentar rapidamente, pois quando isso
+ocorre a tendência é tirar os testes do caminho, ou ter menos cuidado na escrita de novos testes.</p>
+
+<h4>Nenhum acesso ao banco de dados</h4>
+
+<p>Em todas as preparações (setups) de teste de views, os objetos de modelos foram instanciados em memória, simulando o estado que eles teriam na
+aplicação. Para simular um objeto &#8220;salvo no banco de dados&#8221;, bastou setar o id do objeto, como se ele tivesse vindo do banco.</p>
+
+<p>Isto torna os testes de views independentes dos arquivos de <a href="http://guides.rubyonrails.org/testing.html#the-low-down-on-fixtures"><em>fixtures</em></a>
+de teste da aplicação. Normalmente esses testes também acabam rodando mais rápido, dado que não é feito nenhum acesso a banco. Isso contribui
+para a rapidez e a saúde da suíte de testes.</p>
+
+<h4>Modelagem Semântica da Página</h4>
+
+<p>Outro benefício de fazer testes de views é que cada página acaba sendo construída de acordo com as preocupações
+semânticas direcionadas pelos testes. Uma mensagem &#8220;Nenhum resultado encontrado&#8221; parece ficar bem em um parágrafo
+com classe CSS info. Dados provenientes de bancos de dados normalmente se adaptam bem a estruturas tabulares. Mensagens de erro
+normalmente são fortes candidatas a renderizar em listas, e por aí vai.</p>
+
+<p>Este cuidado com organização semântica é importante inclusive no que tange às atividades de SEO. Além disso, é muito
+mais fácil e menos caro um desenvolvedor entregar para um Web Designer um markup pronto, enxuto, para que o Web Designer
+possa focar na criação das folhas de estilo que deixam o sistema mais elegante, do que o contrário - o desenvolvedor
+pegar um design pronto e transformá-lo em algo funcional e que tenha significado para a aplicação.</p>
+
+<p>O <a href="http://www.mezzoblue.com/zengarden/alldesigns/">CSS Zen Garden</a> é um exemplo que vale à pena citar de como é importante
+um sistema ter um markup enxuto e consistente, que os web designers têm a liberdade de estilizar, sem precisar alterar
+o markup.</p>
+
+<h2>Bibliografia</h2>
+
+<ul>
+<li><a href="http://guides.rubyonrails.org/getting_started.html#the-mvc-architecture">The MVC Architecture</a></li>
+<li><a href="http://pragprog.com/book/achbd/the-rspec-book">The RSpec Book, version P2.1, chapter 23</a></li>
+<li><a href="http://apidock.com/rails/ActionDispatch/Assertions/SelectorAssertions/assert_select">API Dock - assert_select</a></li>
+<li><a href="https://github.com/rails/rails/blob/e95b9d6c68b1e0bba3840d18fc0aa94ccf88776d/actionpack/lib/action_view/test_case.rb">ActionView::TestCase - a base para testes de views</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActionView/TestCase/Behavior.html#method-i-locals">ActionView::TestCase::Behavior - a ponte entre as variáveis de instância do teste e da view,
+e que fornece o método rendered</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActionView/Helpers/RenderingHelper.html#method-i-render">Documentação do método render, usado nos testes de views</a></li>
+<li><a href="http://www.mezzoblue.com/zengarden/alldesigns/">CSS Zen Garden</a></li>
+<li><a href="http://railspikes.com/2008/7/11/testing-is-overrated">Testing is Overrated</a></li>
+<li><a href="http://37signals.com/svn/posts/3159-testing-like-the-tsa">Testing like the TSA</a></li>
+</ul>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Fábio L N Miranda</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-11-25T19:30:00-02:00" pubdate data-updated="true">Nov 25<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/minitest/'>MiniTest</a>, <a class='category' href='/blog/categories/rails/'>Rails</a>, <a class='category' href='/blog/categories/tdd/'>TDD</a>, <a class='category' href='/blog/categories/test-driven-development/'>Test Driven Development</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/" data-via="fabiolnm" data-counturl="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/" >Tweet</a>
+  
+  
+  
+    <div class="fb-like" data-send="true" data-width="450" data-show-faces="false"></div>
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/11/21/introducao-a-minitest/" title="Previous Post: Introdução à MiniTest">&laquo; Introdução à MiniTest</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/11/25/especificacoes-de-views-com-minitest/">Especificações de Views com MiniTest</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/11/21/introducao-a-minitest/">Introdução à MiniTest</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js/">MultiModel forms, parte 4: Nested Forms interativos usando Knockout.js</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/">MultiModel forms, parte 3: Nested Forms</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/">MultiModel forms, parte 2: One-To-Many</a>
+      </li>
+    
+  </ul>
+</section>
+
+  
+  <section>
+    <a href="https://github.com/fabiolnm">@fabiolnm</a> on Github
+  </section>
+  
+
+
+<section>
+  
+    <a href="http://twitter.com/fabiolnm" class="twitter-follow-button" data-show-count="false">Follow @fabiolnm</a>
+  
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - Fábio L N Miranda -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'mindshare';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/';
+        var disqus_url = 'http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+<div id="fb-root"></div>
+<script>(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) {return;}
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/en_US/all.js#appId=212934732101925&xfbml=1";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));</script>
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
