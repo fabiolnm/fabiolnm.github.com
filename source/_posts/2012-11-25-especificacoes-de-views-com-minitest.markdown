@@ -71,8 +71,8 @@ Quando um teste é descrito sem uma implementação, a sinalização ```S``` ind
 muito útil, pois serve para a criação de _TODO Lists_ enquanto são modeladas as especificações de teste da aplicação.
 
 Para que as view specs sejam executadas junto com os demais testes pelo comando ```rake minitest:all```, é necessário
-alterar a [variável global MINITEST_TASKS](https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake),
-no ```Rakefile```:
+alterar a [~~variável global MINITEST_TASKS~~](https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake),
+[propriedade MiniTest::Rails::Testing.default_tasks](https://github.com/blowmage/minitest-rails/commit/fbcaf0a2be88272017a254e054d48b7b3de23cd4) no ```Rakefile```:
 
 ``` ruby Rakefile
 #!/usr/bin/env rake
@@ -83,7 +83,7 @@ require File.expand_path('../config/application', __FILE__)
 
 Quizz::Application.load_tasks
 
-MINITEST_TASKS << "views"
+MiniTest::Rails::Testing.default_tasks << "views"
 ```
 
 Configurado o MiniTest para rodar view specs, boa hora para comitar no git:
