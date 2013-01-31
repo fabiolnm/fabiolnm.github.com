@@ -184,8 +184,8 @@ Quando um teste é descrito sem uma implementação, a sinalização <code>S</co
 muito útil, pois serve para a criação de <em>TODO Lists</em> enquanto são modeladas as especificações de teste da aplicação.</p>
 
 <p>Para que as view specs sejam executadas junto com os demais testes pelo comando <code>rake minitest:all</code>, é necessário
-alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake">variável global MINITEST_TASKS</a>,
-no <code>Rakefile</code>:</p>
+alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake"><del>variável global MINITEST_TASKS</del></a>,
+<a href="https://github.com/blowmage/minitest-rails/commit/fbcaf0a2be88272017a254e054d48b7b3de23cd4">propriedade MiniTest::Rails::Testing.default_tasks</a> no <code>Rakefile</code>:</p>
 
 <figure class='code'><figcaption><span>Rakefile</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -879,7 +879,7 @@ e que fornece o método rendered</a></li>
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2012 - Fábio L N Miranda -
+  Copyright &copy; 2013 - Fábio L N Miranda -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 

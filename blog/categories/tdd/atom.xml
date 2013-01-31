@@ -4,7 +4,7 @@
   <title><![CDATA[Category: TDD | Mind Share]]></title>
   <link href="http://mindshare.blog.br/blog/categories/tdd/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2012-11-25T20:15:29-02:00</updated>
+  <updated>2013-01-31T03:20:06-02:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -86,8 +86,8 @@ Quando um teste é descrito sem uma implementação, a sinalização <code>S</co
 muito útil, pois serve para a criação de <em>TODO Lists</em> enquanto são modeladas as especificações de teste da aplicação.</p>
 
 <p>Para que as view specs sejam executadas junto com os demais testes pelo comando <code>rake minitest:all</code>, é necessário
-alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake">variável global MINITEST_TASKS</a>,
-no <code>Rakefile</code>:</p>
+alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b008473aac0c39192d196331fd3caa/lib/minitest/rails/tasks/minitest.rake"><del>variável global MINITEST_TASKS</del></a>,
+<a href="https://github.com/blowmage/minitest-rails/commit/fbcaf0a2be88272017a254e054d48b7b3de23cd4">propriedade MiniTest::Rails::Testing.default_tasks</a> no <code>Rakefile</code>:</p>
 
 <p>``` ruby Rakefile</p>
 
