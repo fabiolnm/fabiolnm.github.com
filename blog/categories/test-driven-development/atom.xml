@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Test Driven Development | Mind Share]]></title>
   <link href="http://mindshare.blog.br/blog/categories/test-driven-development/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2013-01-31T03:20:06-02:00</updated>
+  <updated>2013-07-15T01:47:07-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -101,7 +101,7 @@ alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b00
 
 <p>Quizz::Application.load_tasks</p>
 
-<p>MINITEST_TASKS &lt;&lt; "views"
+<p>MiniTest::Rails::Testing.default_tasks &lt;&lt; "views"
 ```</p>
 
 <p>Configurado o MiniTest para rodar view specs, boa hora para comitar no git:</p>

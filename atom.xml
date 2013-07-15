@@ -4,7 +4,7 @@
   <title><![CDATA[Mind Share]]></title>
   <link href="http://mindshare.blog.br/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2013-01-31T03:20:06-02:00</updated>
+  <updated>2013-07-15T01:47:07-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -12,6 +12,118 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Screencast: Ruby on Rails - How to Learn?]]></title>
+    <link href="http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar/"/>
+    <updated>2013-07-14T22:46:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar</id>
+    <content type="html"><![CDATA[<p>Part 1</p>
+
+<iframe width="560" height="315" src="http://mindshare.blog.br//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
+
+
+<p><a href="http://rubyonrails.org">rubyonrails.org</a> (!?)</p>
+
+<h2>Get Started</h2>
+
+<ul>
+<li>Agile Web Dev book: Loja Virtual (Depot)</li>
+<li>Rails Tutorial Book: Microblog (TDD / daily work / best practices)</li>
+</ul>
+
+
+<h2>1) Install Ruby via Rbenv!</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sudo apt-get install git
+</span><span class='line'>
+</span><span class='line'>git clone https://github.com/sstephenson/rbenv.git ~/.rbenv
+</span><span class='line'>echo 'export PATH="$HOME/.rbenv/bin:$PATH"' &gt;&gt; ~/.bash_profile
+</span><span class='line'>echo 'eval "$(rbenv init -)"' &gt;&gt; ~/.bash_profile
+</span><span class='line'>exec $SHELL -l
+</span><span class='line'>
+</span><span class='line'>git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+</span><span class='line'>rbenv install --list
+</span><span class='line'>
+</span><span class='line'>sudo apt-get install make
+</span><span class='line'>rbenv install 2.0.0-p247</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>2) Install Rails via rubygems</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gem install rails
+</span><span class='line'>rbenv rehash</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>3) New project</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sudo apt-get install sqlite3 libsqlite3-dev nodejs # Database and JavaScript runtime
+</span><span class='line'>
+</span><span class='line'>rails new loja_virtual
+</span><span class='line'>rails s
+</span><span class='line'>open http://localhost:3000</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>4) Version Control with Git</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git init
+</span><span class='line'>git add .
+</span><span class='line'>git commit -m "Initial commit"</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>5) Github Social Coding</h2>
+
+<p>Make development more collaborative</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git remote add origin git@github.com:&lt;username&gt;/&lt;projectname&gt;.git
+</span><span class='line'>
+</span><span class='line'># generate keypair - only if you don't have one
+</span><span class='line'>cd ~/.ssh
+</span><span class='line'>ssh-keygen -t rsa -C "your_email@example.com"
+</span><span class='line'>
+</span><span class='line'># copy this command's output to your Github SSH Keys management page
+</span><span class='line'>cat id_rsa.pub
+</span><span class='line'>
+</span><span class='line'>git push -u origin master</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Next Stop</h2>
+
+<p>Deploy (!!!) to Amazon Web Services Free Tier</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Especificações de Views com MiniTest]]></title>
@@ -116,7 +228,7 @@ alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b00
 </span><span class='line'>
 </span><span class='line'><span class="no">Quizz</span><span class="o">::</span><span class="no">Application</span><span class="o">.</span><span class="n">load_tasks</span>
 </span><span class='line'>
-</span><span class='line'><span class="no">MINITEST_TASKS</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;views&quot;</span>
+</span><span class='line'><span class="no">MiniTest</span><span class="o">::</span><span class="no">Rails</span><span class="o">::</span><span class="no">Testing</span><span class="o">.</span><span class="n">default_tasks</span> <span class="o">&lt;&lt;</span> <span class="s2">&quot;views&quot;</span>
 </span></code></pre></td></tr></table></div></figure>
 
 

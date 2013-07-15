@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Rails | Mind Share]]></title>
   <link href="http://mindshare.blog.br/blog/categories/rails/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2013-01-31T03:20:06-02:00</updated>
+  <updated>2013-07-15T01:47:07-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -12,6 +12,92 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Screencast: Ruby on Rails - How to Learn?]]></title>
+    <link href="http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar/"/>
+    <updated>2013-07-14T22:46:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar</id>
+    <content type="html"><![CDATA[<p>Part 1</p>
+
+<iframe width="560" height="315" src="http://mindshare.blog.br//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
+
+
+<p><a href="http://rubyonrails.org">rubyonrails.org</a> (!?)</p>
+
+<h2>Get Started</h2>
+
+<ul>
+<li>Agile Web Dev book: Loja Virtual (Depot)</li>
+<li>Rails Tutorial Book: Microblog (TDD / daily work / best practices)</li>
+</ul>
+
+
+<h2>1) Install Ruby via Rbenv!</h2>
+
+<p>```
+sudo apt-get install git</p>
+
+<p>git clone https://github.com/sstephenson/rbenv.git ~/.rbenv
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bash_profile
+echo 'eval "$(rbenv init -)"' >> ~/.bash_profile
+exec $SHELL -l</p>
+
+<p>git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
+rbenv install --list</p>
+
+<p>sudo apt-get install make
+rbenv install 2.0.0-p247
+```</p>
+
+<h2>2) Install Rails via rubygems</h2>
+
+<p><code>
+gem install rails
+rbenv rehash
+</code></p>
+
+<h2>3) New project</h2>
+
+<p>```
+sudo apt-get install sqlite3 libsqlite3-dev nodejs # Database and JavaScript runtime</p>
+
+<p>rails new loja_virtual
+rails s
+open http://localhost:3000
+```</p>
+
+<h2>4) Version Control with Git</h2>
+
+<p><code>
+git init
+git add .
+git commit -m "Initial commit"
+</code></p>
+
+<h2>5) Github Social Coding</h2>
+
+<p>Make development more collaborative
+```
+git remote add origin git@github.com:<username>/<projectname>.git</p>
+
+<h1>generate keypair - only if you don't have one</h1>
+
+<p>cd ~/.ssh
+ssh-keygen -t rsa -C "your_email@example.com"</p>
+
+<h1>copy this command's output to your Github SSH Keys management page</h1>
+
+<p>cat id_rsa.pub</p>
+
+<p>git push -u origin master
+```</p>
+
+<h2>Next Stop</h2>
+
+<p>Deploy (!!!) to Amazon Web Services Free Tier</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Especificações de Views com MiniTest]]></title>
@@ -101,7 +187,7 @@ alterar a <a href="https://github.com/blowmage/minitest-rails/blob/91297faee6b00
 
 <p>Quizz::Application.load_tasks</p>
 
-<p>MINITEST_TASKS &lt;&lt; "views"
+<p>MiniTest::Rails::Testing.default_tasks &lt;&lt; "views"
 ```</p>
 
 <p>Configurado o MiniTest para rodar view specs, boa hora para comitar no git:</p>
@@ -1421,117 +1507,6 @@ accepts_nested_attributes_for :permissions, allow_destroy: true,
     tornaremos a adição de permissões mais dinâmica, além de adicionar dinamicamente o atributo _destroy no request, sem precisar de um checkbox.
   </p>
 
-  <h3>Referências</h3>
-  <ul>
-    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
-        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
-    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
-        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
-    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
-    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
-        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
-    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
-        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
-  </ul>
-</div>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[MultiModel forms, parte 2: One-To-Many]]></title>
-    <link href="http://mindshare.blog.br/blog/2012/08/05/multimodel-forms-parte-2-one-to-many/"/>
-    <updated>2012-08-05T00:00:00-03:00</updated>
-    <id>http://mindshare.blog.br/blog/2012/08/05/multimodel-forms-parte-2-one-to-many</id>
-    <content type="html"><![CDATA[<div class='post'>
-<!-- MORE -->
-Este post é o segundo de uma série de quatro artigos:
-
-<ul>
-  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
-  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
-  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
-  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
-      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
-</ul>
-O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
-
-
-<h2>Nested Models - One-to-Many</h2>
-Segue o modelo utilizado neste tutorial:
-<ul>
-  <li><span style="color: #666666;">Person has one UserAccount (parte 1)</span></li>
-  <li><span style="color: blue;"><b>UserAccount has many Permissions (parte 2)</b></span></li>
-</ul>
-
-Conforme estabelecido na parte 1 desta série, queremos editar UserAccount a partir do model Person. Nesta segunda parte,
-veremos como editar também a partir do model Person a associação one-to-many UserAccount / Permissions. O modelo de permissões será bem simples:
-``` ruby
-rails g model Permission user_account_id:integer restricted_area:string grants:string
-rake db:migrate
-```
-<p>Por fim, resta configurar as validações e relacionamentos nos respectivos models.</p>
-
-<h3>Nested One-to-Many</h3>
-É necessário adicionar uma cláusula has_many em UserAccount, para que esta possa navegar na associação um-para-muitos.
-Também é necessário configurar UserAccount para aceitar os atributos da associação Permission.
-``` ruby
-class UserAccount < ActiveRecord::Base
-  attr_accessible :password, :username, :permissions_attributes
-  validates_presence_of :username, :password, :person
-  belongs_to :person
-  has_many :permissions, inverse_of: :user_account
-  accepts_nested_attributes_for :permissions, allow_destroy: true
-end
-```
-
-Permission possui a chave estrangeira user_account_id (lado belongs_to).
-``` ruby
-class Permission < ActiveRecord::Base
-  attr_accessible :restricted_area
-  validates_presence_of :user_account, :restricted_area, :grants
-  belongs_to :user_account
-end
-```
-
-Façamos alguns testes no console do Rails:
-``` ruby
-u = UserAccount.first
-UserAccount Load (0.2ms) SELECT "user_accounts".* FROM "user_accounts" LIMIT 1
- => #<UserAccount id: 1, person_id: 1, username: "jsilva", password: "abc123", created_at: "2012-08-05 04:02:34", updated_at: "2012-08-05 04:02:34">
-
-u.update_attributes permissions_attributes: [ { restricted_area: :admin, grants: "Read-Write" }, { restricted_area: :backup, grants: "Read-Only" } ]
- (0.3ms) begin transaction
- Person Load (0.3ms) SELECT "people".* FROM "people" WHERE "people"."id" = 1 LIMIT 1
- UserAccount Load (0.2ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."id" = 1 LIMIT 1
- UserAccount Load (0.1ms) SELECT "user_accounts".* FROM "user_accounts" WHERE "user_accounts"."id" = 1 LIMIT 1
- SQL (12.6ms) INSERT INTO "permissions" ("created_at", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["grants", "Read-Write"], ["restricted_area", :admin], ["updated_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["user_account_id", 1]]
- SQL (0.2ms) INSERT INTO "permissions" ("created_at", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["grants", "Read-Only"], ["restricted_area", :backup], ["updated_at", Sun, 05 Aug 2012 04:54:31 UTC +00:00], ["user_account_id", 1]]
- (58.7ms) commit transaction
-```
-
-No exemplo acima, permissões foram adicionadas a uma conta existente de usuário. É possível ir além: todos os dados de UserAccount e Permission podem ser diretamente manipulados um nível acima, numa chamada de Person:<br />
-
-``` ruby
-p = Person.create name: "João Oliveira", user_account_attributes: {
-  username: "joliv", password: "secret", permissions_attributes: [
-    { restricted_area: "admin", grants: "Read-Write" },
-    { restricted_area: "backups", grants: "Read-Only" }
-  ]
-}
- (0.1ms) begin transaction
- (0.0ms) commit transaction
- (0.1ms) begin transaction
- SQL (36.8ms) INSERT INTO "people" ("created_at", "name", "updated_at") VALUES (?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["name", "João Oliveira"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00]]
- SQL (0.6ms) INSERT INTO "user_accounts" ("created_at", "password", "person_id", "updated_at", "username") VALUES (?, ?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["password", "secret"], ["person_id", 3], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["username", "joliv"]]
- SQL (0.4ms) INSERT INTO "permissions" ("created_at", "grants", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["grants", "Read-Write"], ["restricted_area", "admin"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["user_account_id", 3]]
- SQL (0.2ms) INSERT INTO "permissions" ("created_at", "grants", "restricted_area", "updated_at", "user_account_id") VALUES (?, ?, ?, ?) [["created_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["grants", "Read-Only"], ["restricted_area", "backups"], ["updated_at", Sun, 05 Aug 2012 05:08:31 UTC +00:00], ["user_account_id", 3]]
- (71.4ms) commit transaction
-```
-  <p>
-    Aprecie o poder deste recurso: uma simples linha de comando, e numa única transação são persistidos 4 objetos: Person, UserAccount e duas Permission. Não pára por aí.
-    Este poder é ainda mais amplo, visto que Rails fornece helpers para construção de formulários com nested models - tema que será abordado na parte 3 desta série.
-  </p>
   <h3>Referências</h3>
   <ul>
     <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
