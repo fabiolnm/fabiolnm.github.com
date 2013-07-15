@@ -9,8 +9,7 @@
   <meta name="author" content="Fábio L N Miranda">
 
   
-  <meta name="description" content="Part 1 rubyonrails.org (!?) Get Started Agile Web Dev book: Loja Virtual (Depot)
-Rails Tutorial Book: Microblog (TDD / daily work / best practices) 1 &hellip;">
+  <meta name="description" content=" ">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,7 +83,7 @@ Rails Tutorial Book: Microblog (TDD / daily work / best practices) 1 &hellip;">
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar/">Screencast: Ruby on Rails - How to Learn?</a></h1>
+      <h1 class="entry-title"><a href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar-parte1/">Screencast: Ruby on Rails - How to Learn? - Part 1</a></h1>
     
     
       <p class="meta">
@@ -102,119 +101,24 @@ Rails Tutorial Book: Microblog (TDD / daily work / best practices) 1 &hellip;">
 
 <time datetime="2013-07-14T22:46:00-03:00" pubdate data-updated="true">Jul 14<span>th</span>, 2013</time>
         
-         | <a href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar/#disqus_thread">Comments</a>
+         | <a href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar-parte1/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>Part 1</p>
-
-<iframe width="560" height="315" src="//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
+  <div class="entry-content"><iframe width="560" height="315" src="//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
 
 
-<p><a href="http://rubyonrails.org">rubyonrails.org</a> (!?)</p>
-
-<h2>Get Started</h2>
-
-<ul>
-<li>Agile Web Dev book: Loja Virtual (Depot)</li>
-<li>Rails Tutorial Book: Microblog (TDD / daily work / best practices)</li>
-</ul>
 
 
-<h2>1) Install Ruby via Rbenv!</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sudo apt-get install git
-</span><span class='line'>
-</span><span class='line'>git clone https://github.com/sstephenson/rbenv.git ~/.rbenv
-</span><span class='line'>echo 'export PATH="$HOME/.rbenv/bin:$PATH"' &gt;&gt; ~/.bash_profile
-</span><span class='line'>echo 'eval "$(rbenv init -)"' &gt;&gt; ~/.bash_profile
-</span><span class='line'>exec $SHELL -l
-</span><span class='line'>
-</span><span class='line'>git clone https://github.com/sstephenson/ruby-build.git ~/.rbenv/plugins/ruby-build
-</span><span class='line'>rbenv install --list
-</span><span class='line'>
-</span><span class='line'>sudo apt-get install make
-</span><span class='line'>rbenv install 2.0.0-p247</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>2) Install Rails via rubygems</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>gem install rails
-</span><span class='line'>rbenv rehash</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>3) New project</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sudo apt-get install sqlite3 libsqlite3-dev nodejs # Database and JavaScript runtime
-</span><span class='line'>
-</span><span class='line'>rails new loja_virtual
-</span><span class='line'>rails s
-</span><span class='line'>open http://localhost:3000</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>4) Version Control with Git</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>git init
-</span><span class='line'>git add .
-</span><span class='line'>git commit -m "Initial commit"</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>5) Github Social Coding</h2>
-
-<p>Make development more collaborative</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>git remote add origin git@github.com:&lt;username&gt;/&lt;projectname&gt;.git
-</span><span class='line'>
-</span><span class='line'># generate keypair - only if you don't have one
-</span><span class='line'>cd ~/.ssh
-</span><span class='line'>ssh-keygen -t rsa -C "your_email@example.com"
-</span><span class='line'>
-</span><span class='line'># copy this command's output to your Github SSH Keys management page
-</span><span class='line'>cat id_rsa.pub
-</span><span class='line'>
-</span><span class='line'>git push -u origin master</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Next Stop</h2>
-
-<p>Deploy (!!!) to Amazon Web Services Free Tier</p>
 </div>
   
+  
+    <footer>
+      <a rel="full-article" href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar-parte1/">Read on &rarr;</a>
+    </footer>
   
 
 
@@ -510,7 +414,7 @@ O Rails fornece também view helpers para a construção de views com este recur
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar/">Screencast: Ruby on Rails - How to Learn?</a>
+        <a href="/blog/2013/07/14/screencast-ruby-on-rails-como-comecar-parte1/">Screencast: Ruby on Rails - How to Learn? - part 1</a>
       </li>
     
       <li class="post">

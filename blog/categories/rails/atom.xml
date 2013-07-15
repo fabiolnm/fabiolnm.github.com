@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Rails | Mind Share]]></title>
   <link href="http://mindshare.blog.br/blog/categories/rails/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2013-07-15T01:47:07-03:00</updated>
+  <updated>2013-07-15T01:51:04-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -14,13 +14,16 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Screencast: Ruby on Rails - How to Learn?]]></title>
-    <link href="http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar/"/>
+    <title type="html"><![CDATA[Screencast: Ruby on Rails - How to Learn? - part 1]]></title>
+    <link href="http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar-parte1/"/>
     <updated>2013-07-14T22:46:00-03:00</updated>
-    <id>http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar</id>
-    <content type="html"><![CDATA[<p>Part 1</p>
+    <id>http://mindshare.blog.br/blog/2013/07/14/screencast-ruby-on-rails-como-comecar-parte1</id>
+    <content type="html"><![CDATA[<iframe width="560" height="315" src="http://mindshare.blog.br//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
 
-<iframe width="560" height="315" src="http://mindshare.blog.br//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
+
+
+
+<!-- more -->
 
 
 <p><a href="http://rubyonrails.org">rubyonrails.org</a> (!?)</p>
