@@ -1,16 +1,16 @@
 ---
 published: true
 layout: post
-title: "Screencast: Ruby on Rails - How to Learn?"
+title: "Screencast: Ruby on Rails - How to Learn? - part 1"
 date: 2013-07-14 22:46
 comments: true
 categories:
  - Rails
 ---
 
-Part 1
-
 <iframe width="560" height="315" src="//www.youtube.com/embed/3TYrOp-6ltw" frameborder="0" allowfullscreen></iframe>
+
+<!-- more -->
 
 [rubyonrails.org](http://rubyonrails.org) (!?)
 
