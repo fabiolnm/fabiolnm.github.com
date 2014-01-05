@@ -284,5 +284,6 @@ Todo o mecanismo de locking é feito pela aplicação, independente do banco de 
 
 ### Referências Bibliográficas
 
+* [Concurrency Control](http://en.wikipedia.org/wiki/Concurrency_control)
 * [Optimistic Locking](http://api.rubyonrails.org/classes/ActiveRecord/Locking/Optimistic.html)
 * [Pessimistic Locking](http://api.rubyonrails.org/classes/ActiveRecord/Locking/Pessimistic.html)
