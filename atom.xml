@@ -4,7 +4,7 @@
   <title><![CDATA[Mind Share]]></title>
   <link href="http://mindshare.blog.br/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2014-01-05T03:18:04-03:00</updated>
+  <updated>2014-01-05T04:33:17-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -12,6 +12,427 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Tratamento de Concorrência em Aplicações Rails]]></title>
+    <link href="http://mindshare.blog.br/blog/2014/01/05/tratamento-de-concorrencia-em-aplicacoes-rails/"/>
+    <updated>2014-01-05T03:32:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2014/01/05/tratamento-de-concorrencia-em-aplicacoes-rails</id>
+    <content type="html"><![CDATA[<p>Em aplicações web, onde transações podem ocorrer simultaneamente, é necessário estar atento às situações
+onde a concorrência pode levar à violação da integridade dos dados da aplicação. Considere por exemplo
+uma aplicação que gerencia créditos e débitos, e que armazena o saldo pré-computado de uma conta.</p>
+
+<!-- more -->
+
+
+<p>Este problema apresenta um cenário de condição de corrida: caso duas transações ocorram simultaneamente,
+o saldo pode ser atualizado de forma indevida.</p>
+
+<p>Suponhamos uma conta cujo saldo seja $0, e que ocorra uma transação de crédito (C) de $100, simultaneamente
+com um débito (D) de $40. Sejam Ti os tempos em que os eventos ocorrem, T0 representando um estado anterior
+às transações.</p>
+
+<table class="concurrency_events">
+<tr>
+  <th></th>
+  <th>C</th>
+  <th>D</th>
+  <th></th>
+</tr>
+<tr>
+  <th>T0</th>
+  <td>$0</td>
+  <td>$0</td>
+  <td>ambas as transações leêm o saldo inicial como $0</td>
+</tr>
+<tr>
+  <th>T1</th>
+  <td>$100</td>
+  <td>$0</td>
+  <td>a transação de crédito atualiza o saldo um pouco antes, assumindo o valor $100 naquela thread</td>
+</tr>
+<tr>
+  <th>T2</th>
+  <td>$100</td>
+  <td>-$40</td>
+  <td>a transação de débito atualiza o saldo um pouco depois, e o saldo assume valor -$40</td>
+</tr>
+<tr>
+  <th>T3</th>
+  <td colspan="2">$100 ou -$40</td>
+  <td>o resultado da operação é igual ao da última transação executada</td>
+</tr>
+</table>
+
+
+<br/>
+
+
+<p>Na verdade, o que se deseja é que o saldo final seja $60.</p>
+
+<p>Uma forma possível de reproduzir condições de corrida em aplicações Rails é adicionar um teste de integração:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="nb">require</span> <span class="s2">&quot;test_helper&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">describe</span> <span class="s2">&quot;UpdateBalance Integration Test&quot;</span> <span class="k">do</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">credit</span><span class="p">(</span><span class="n">balance</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">post_via_redirect</span> <span class="n">transactions_path</span><span class="p">,</span>
+</span><span class='line'>      <span class="n">balance_id</span><span class="p">:</span> <span class="n">balance</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="n">type</span><span class="p">:</span> <span class="s1">&#39;Credit&#39;</span>
+</span><span class='line'>    <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">reconnect!</span>                <span class="c1"># helps to avoid database lock timeouts between threads</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">debit</span><span class="p">(</span><span class="n">balance</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">post_via_redirect</span> <span class="n">transactions_path</span><span class="p">,</span>
+</span><span class='line'>      <span class="n">balance_id</span><span class="p">:</span> <span class="n">balance</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="n">type</span><span class="p">:</span> <span class="s1">&#39;Debit&#39;</span>   <span class="c1"># helps to avoid database lock timeouts between threads</span>
+</span><span class='line'>    <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">reconnect!</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">it</span> <span class="s2">&quot;handles race conditions&quot;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">n</span> <span class="o">=</span> <span class="mi">5</span>
+</span><span class='line'>    <span class="n">n</span><span class="o">.</span><span class="n">times</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span>
+</span><span class='line'>      <span class="n">balance</span> <span class="o">=</span> <span class="n">balances</span> <span class="s2">&quot;balance_</span><span class="si">#{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>      <span class="o">[</span>
+</span><span class='line'>        <span class="no">Thread</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="n">credit</span> <span class="n">balance</span><span class="p">,</span> <span class="mi">100</span> <span class="p">},</span>
+</span><span class='line'>        <span class="no">Thread</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="n">debit</span> <span class="n">balance</span><span class="p">,</span> <span class="mi">40</span> <span class="p">}</span>
+</span><span class='line'>      <span class="o">].</span><span class="n">each</span> <span class="p">{</span><span class="o">|</span><span class="n">t</span><span class="o">|</span> <span class="n">t</span><span class="o">.</span><span class="n">join</span> <span class="p">}</span>
+</span><span class='line'>      <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">reconnect!</span>              <span class="c1"># helps to avoid database lock timeouts</span>
+</span><span class='line'>      <span class="n">balance</span><span class="o">.</span><span class="n">reload</span><span class="o">.</span><span class="n">value</span>
+</span><span class='line'>    <span class="p">}</span><span class="o">.</span><span class="n">must_equal</span> <span class="o">[</span><span class="mi">60</span><span class="o">]</span> <span class="o">*</span> <span class="n">n</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>  1<span class="o">)</span> Failure:
+</span><span class='line'>UpdateBalance Integration Test#test_0001_handles race conditions <span class="o">[</span>/Users/fabio/workspace/miranti/LockingApp/test/integration/update_balance_test.rb:20<span class="o">]</span>:
+</span><span class='line'>Expected: <span class="o">[</span>60, 60, 60, 60, 60<span class="o">]</span>
+</span><span class='line'>  Actual: <span class="o">[</span>-40, 100, -40, 100, 100<span class="o">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>É necessário, portanto, adicionar mecanismos para impedir que o saldo seja atualizado simultaneamente por diferentes transações.</p>
+
+<h3>Optimistic Locking</h3>
+
+<p>Para habilitar esta abordagem, basta adicionar uma coluna (<code>lock_version</code>, por default)
+que é utilizada para &#8216;versionar&#8217; um registro no banco. Cada vez que o registro é atualizado,
+a coluna é incrementada.</p>
+
+<table class="concurrency_events">
+<tr>
+  <th></th>
+  <th>Versão C</th>
+  <th>C</th>
+  <th>Versão D</th>
+  <th>D</th>
+  <th></th>
+</tr>
+<tr>
+  <th>T0</th>
+  <td>5</td>
+  <td>$0</td>
+  <td>5</td>
+  <td>$0</td>
+  <td>ambas as transações leêm o saldo inicial como $0 e versão 5</td>
+</tr>
+<tr>
+  <th>T1</th>
+  <td>6</td>
+  <td>$100</td>
+  <td>5</td>
+  <td>$0</td>
+  <td>a transação de crédito atualiza o saldo e incrementa a versão</td>
+</tr>
+<tr>
+  <th>T2</th>
+  <td>6</td>
+  <td>$100</td>
+  <td colspan="2" style="color: red; font-weight: bold">Stale</td>
+  <td>
+    quando tenta-se criar o débito, a aplicação percebe que a versão presente no banco já é mais atual
+    que a lida inicialmente pela thread, e lança uma exceção <code>ActiveRecord::StaleObjectError</code>
+  </td>
+</tr>
+<tr>
+  <th>T3</th>
+  <td>6</td>
+  <td colspan="3">$100</td>
+  <td>Débito não executado</td>
+</tr>
+</table>
+
+
+<br />
+
+
+<p>O tratamento do erro fica a cargo da aplicação.</p>
+
+<p>Pode-se adotar uma abordagem &#8216;relaxada&#8217;, apresentando uma mensagem de erro para o usuário, solicitando
+que repita/confirme a transação:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">it</span> <span class="s2">&quot;handles race conditions raising error&quot;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="n">n</span> <span class="o">=</span> <span class="mi">5</span>
+</span><span class='line'>    <span class="c1"># disparar o erro é o comportamento esperado</span>
+</span><span class='line'>    <span class="n">assert_raise</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">StaleObjectError</span> <span class="k">do</span>
+</span><span class='line'>      <span class="n">n</span><span class="o">.</span><span class="n">times</span><span class="o">.</span><span class="n">collect</span> <span class="p">{</span> <span class="o">|</span><span class="n">i</span><span class="o">|</span>
+</span><span class='line'>        <span class="n">balance</span> <span class="o">=</span> <span class="n">balances</span> <span class="s2">&quot;balance_</span><span class="si">#{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span class='line'>        <span class="o">[</span>
+</span><span class='line'>          <span class="no">Thread</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="n">credit</span> <span class="n">balance</span><span class="p">,</span> <span class="mi">100</span> <span class="p">},</span>
+</span><span class='line'>          <span class="no">Thread</span><span class="o">.</span><span class="n">new</span> <span class="p">{</span> <span class="n">debit</span> <span class="n">balance</span><span class="p">,</span> <span class="mi">40</span> <span class="p">}</span>
+</span><span class='line'>        <span class="o">].</span><span class="n">each</span> <span class="p">{</span><span class="o">|</span><span class="n">t</span><span class="o">|</span> <span class="n">t</span><span class="o">.</span><span class="n">join</span> <span class="p">}</span>
+</span><span class='line'>        <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">reconnect!</span>
+</span><span class='line'>        <span class="n">balance</span><span class="o">.</span><span class="n">reload</span><span class="o">.</span><span class="n">value</span> <span class="c1">#.must_equal 60</span>
+</span><span class='line'>        <span class="c1"># Balance.find(balance.id).value</span>
+</span><span class='line'>      <span class="p">}</span><span class="o">.</span><span class="n">must_equal</span> <span class="o">[</span><span class="mi">60</span><span class="o">]</span> <span class="o">*</span> <span class="n">n</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ou uma abordagem resiliente, obtendo a versão atualizada do saldo e operando sobre este a segunda transação:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="c1"># POST /transactions</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="n">factor</span>    <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:type</span><span class="o">]</span> <span class="o">==</span> <span class="s1">&#39;Debit&#39;</span> <span class="p">?</span> <span class="o">-</span><span class="mi">1</span> <span class="p">:</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="vi">@value</span>    <span class="o">=</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">params</span><span class="o">[</span><span class="ss">:value</span><span class="o">].</span><span class="n">to_f</span>
+</span><span class='line'>    <span class="vi">@balance</span>  <span class="o">=</span> <span class="no">Balance</span><span class="o">.</span><span class="n">find</span> <span class="n">params</span><span class="o">[</span><span class="ss">:balance_id</span><span class="o">]</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1"># _version, _value = @balance.lock_version, @balance.value</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">success</span>   <span class="o">=</span> <span class="k">begin</span>
+</span><span class='line'>                  <span class="n">create_transaction</span>
+</span><span class='line'>                <span class="k">rescue</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">StaleObjectError</span>   <span class="c1"># recover and retry</span>
+</span><span class='line'>                  <span class="no">Balance</span><span class="o">.</span><span class="n">connection</span><span class="o">.</span><span class="n">reconnect!</span>
+</span><span class='line'>                  <span class="vi">@balance</span><span class="o">.</span><span class="n">reload</span>
+</span><span class='line'>                  <span class="n">create_transaction</span>
+</span><span class='line'>                <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1"># log.debug &quot;#{@balance.id} (v#{_version} -&gt; v#{@balance.lock_version}): $#{_value} -&gt; $#{@balance.value}&quot;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="n">success</span>
+</span><span class='line'>      <span class="n">redirect_to</span> <span class="vi">@transaction</span><span class="p">,</span> <span class="n">notice</span><span class="p">:</span> <span class="s1">&#39;Transaction was successfully created.&#39;</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">render</span> <span class="n">action</span><span class="p">:</span> <span class="s1">&#39;new&#39;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kp">private</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">create_transaction</span>
+</span><span class='line'>      <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span><span class="o">.</span><span class="n">transaction</span> <span class="k">do</span>
+</span><span class='line'>        <span class="vi">@transaction</span> <span class="o">=</span> <span class="no">Transaction</span><span class="o">.</span><span class="n">create</span> <span class="n">balance</span><span class="p">:</span> <span class="vi">@balance</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="vi">@value</span>
+</span><span class='line'>        <span class="k">if</span> <span class="vi">@transaction</span><span class="o">.</span><span class="n">valid?</span>
+</span><span class='line'>          <span class="vi">@balance</span><span class="o">.</span><span class="n">value</span> <span class="o">+=</span> <span class="vi">@transaction</span><span class="o">.</span><span class="n">value</span>
+</span><span class='line'>          <span class="vi">@balance</span><span class="o">.</span><span class="n">save</span>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c"># Running tests:</span>
+</span><span class='line'>.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Pessimistic Locking</h3>
+
+<p>Na abordagem pessimista, um determinado registro fica bloqueado, a nível de banco de dados,
+(por exemplo, <code>SELECT ... FOR UPDATE</code>) impedindo que seja alterado por uma transação concorrente.</p>
+
+<p>Existem 3 formas de habilitar esta trava:</p>
+
+<p>a) Diretamente na query:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="no">Balance</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">lock</span><span class="p">:</span> <span class="kp">true</span><span class="p">)</span>  <span class="c1"># deprecated</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>b) No objeto:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">balance</span><span class="o">.</span><span class="n">lock!</span>  <span class="c1"># o objeto é recarregado, aplicando a trava</span>
+</span><span class='line'>  <span class="c1"># some stuff...</span>
+</span><span class='line'>  <span class="n">balance</span><span class="o">.</span><span class="n">save!</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>c) Passando um bloco:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="n">balance</span><span class="o">.</span><span class="n">with_lock</span> <span class="k">do</span>
+</span><span class='line'>    <span class="c1"># some stuff</span>
+</span><span class='line'>  <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A implementação do controller ficaria mais simples (nenhuma modificação necessária no teste):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'>  <span class="c1"># POST /transactions</span>
+</span><span class='line'>  <span class="k">def</span> <span class="nf">create</span>
+</span><span class='line'>    <span class="n">factor</span>    <span class="o">=</span> <span class="n">params</span><span class="o">[</span><span class="ss">:type</span><span class="o">]</span> <span class="o">==</span> <span class="s1">&#39;Debit&#39;</span> <span class="p">?</span> <span class="o">-</span><span class="mi">1</span> <span class="p">:</span> <span class="mi">1</span>
+</span><span class='line'>    <span class="vi">@value</span>    <span class="o">=</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">params</span><span class="o">[</span><span class="ss">:value</span><span class="o">].</span><span class="n">to_f</span>
+</span><span class='line'>    <span class="vi">@balance</span>  <span class="o">=</span> <span class="no">Balance</span><span class="o">.</span><span class="n">find</span> <span class="n">params</span><span class="o">[</span><span class="ss">:balance_id</span><span class="o">]</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span> <span class="n">create_transaction</span>
+</span><span class='line'>      <span class="n">redirect_to</span> <span class="vi">@transaction</span><span class="p">,</span> <span class="n">notice</span><span class="p">:</span> <span class="s1">&#39;Transaction was successfully created.&#39;</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>      <span class="n">render</span> <span class="n">action</span><span class="p">:</span> <span class="s1">&#39;new&#39;</span>
+</span><span class='line'>    <span class="k">end</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kp">private</span>
+</span><span class='line'>    <span class="k">def</span> <span class="nf">create_transaction</span>
+</span><span class='line'>      <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span><span class="o">.</span><span class="n">transaction</span> <span class="k">do</span>
+</span><span class='line'>        <span class="vi">@transaction</span> <span class="o">=</span> <span class="no">Transaction</span><span class="o">.</span><span class="n">create</span> <span class="n">balance</span><span class="p">:</span> <span class="vi">@balance</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="vi">@value</span>
+</span><span class='line'>        <span class="k">if</span> <span class="vi">@transaction</span><span class="o">.</span><span class="n">valid?</span>
+</span><span class='line'>          <span class="vi">@balance</span><span class="o">.</span><span class="n">with_lock</span> <span class="k">do</span>
+</span><span class='line'>            <span class="vi">@balance</span><span class="o">.</span><span class="n">value</span> <span class="o">+=</span> <span class="vi">@transaction</span><span class="o">.</span><span class="n">value</span>
+</span><span class='line'>            <span class="vi">@balance</span><span class="o">.</span><span class="n">save</span>
+</span><span class='line'>          <span class="k">end</span>
+</span><span class='line'>        <span class="k">end</span>
+</span><span class='line'>      <span class="k">end</span>
+</span><span class='line'>    <span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Considerações Finais</h3>
+
+<p>Apesar de mais simples, a abordagem pessimista aplica travas no banco de dados, sendo suscetível a situações
+de deadlock, ou seja, duas transações bloquearem uma à outra, caso criem dependência circular entre os
+registros que elas travam. Além disso, a implementação da trava depende do banco de dados utilizado.</p>
+
+<p>Na abordagem otimista, nenhum registro é travado (não há risco de deadlock), mas adiciona complexidade à
+aplicação, dado que é necessário adicionar o tratamento para quando se tenta atualizar um objeto defasado (stale).
+Todo o mecanismo de locking é feito pela aplicação, independente do banco de dados utilizado.</p>
+
+<h3>Referências Bibliográficas</h3>
+
+<ul>
+<li><a href="http://api.rubyonrails.org/classes/ActiveRecord/Locking/Optimistic.html">Optimistic Locking</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActiveRecord/Locking/Pessimistic.html">Pessimistic Locking</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Dependency Injection em Ruby]]></title>

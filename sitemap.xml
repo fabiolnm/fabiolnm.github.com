@@ -37,11 +37,17 @@
         <lastmod>2014-01-05T03:14:05-03:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://mindshare.blog.br/blog/2014/01/05/tratamento-de-concorrencia-em-aplicacoes-rails/
+        </loc>
+        <lastmod>2014-01-05T04:30:12-03:00</lastmod>
+    </url>
+    <url>
         <loc>http://mindshare.blog.br/blog/archives/</loc>
-        <lastmod>2014-01-05T03:14:05-03:00</lastmod>
+        <lastmod>2014-01-05T04:30:12-03:00</lastmod>
     </url>
     <url>
         <loc>http://mindshare.blog.br/</loc>
-        <lastmod>2014-01-05T03:14:05-03:00</lastmod>
+        <lastmod>2014-01-05T04:30:12-03:00</lastmod>
     </url>
 </urlset>

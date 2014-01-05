@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Rails | Mind Share]]></title>
   <link href="http://mindshare.blog.br/blog/categories/rails/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2014-01-05T03:18:04-03:00</updated>
+  <updated>2014-01-05T04:33:17-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -12,6 +12,331 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Tratamento de Concorrência em Aplicações Rails]]></title>
+    <link href="http://mindshare.blog.br/blog/2014/01/05/tratamento-de-concorrencia-em-aplicacoes-rails/"/>
+    <updated>2014-01-05T03:32:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2014/01/05/tratamento-de-concorrencia-em-aplicacoes-rails</id>
+    <content type="html"><![CDATA[<p>Em aplicações web, onde transações podem ocorrer simultaneamente, é necessário estar atento às situações
+onde a concorrência pode levar à violação da integridade dos dados da aplicação. Considere por exemplo
+uma aplicação que gerencia créditos e débitos, e que armazena o saldo pré-computado de uma conta.</p>
+
+<!-- more -->
+
+
+<p>Este problema apresenta um cenário de condição de corrida: caso duas transações ocorram simultaneamente,
+o saldo pode ser atualizado de forma indevida.</p>
+
+<p>Suponhamos uma conta cujo saldo seja $0, e que ocorra uma transação de crédito (C) de $100, simultaneamente
+com um débito (D) de $40. Sejam Ti os tempos em que os eventos ocorrem, T0 representando um estado anterior
+às transações.</p>
+
+<table class="concurrency_events">
+<tr>
+  <th></th>
+  <th>C</th>
+  <th>D</th>
+  <th></th>
+</tr>
+<tr>
+  <th>T0</th>
+  <td>$0</td>
+  <td>$0</td>
+  <td>ambas as transações leêm o saldo inicial como $0</td>
+</tr>
+<tr>
+  <th>T1</th>
+  <td>$100</td>
+  <td>$0</td>
+  <td>a transação de crédito atualiza o saldo um pouco antes, assumindo o valor $100 naquela thread</td>
+</tr>
+<tr>
+  <th>T2</th>
+  <td>$100</td>
+  <td>-$40</td>
+  <td>a transação de débito atualiza o saldo um pouco depois, e o saldo assume valor -$40</td>
+</tr>
+<tr>
+  <th>T3</th>
+  <td colspan="2">$100 ou -$40</td>
+  <td>o resultado da operação é igual ao da última transação executada</td>
+</tr>
+</table>
+
+
+<br/>
+
+
+<p>Na verdade, o que se deseja é que o saldo final seja $60.</p>
+
+<p>Uma forma possível de reproduzir condições de corrida em aplicações Rails é adicionar um teste de integração:</p>
+
+<p>``` ruby
+require "test_helper"</p>
+
+<p>describe "UpdateBalance Integration Test" do
+  def credit(balance, value)</p>
+
+<pre><code>post_via_redirect transactions_path,
+  balance_id: balance.id, value: value, type: 'Credit'
+ActiveRecord::Base.connection.reconnect!                # helps to avoid database lock timeouts between threads
+</code></pre>
+
+<p>  end</p>
+
+<p>  def debit(balance, value)</p>
+
+<pre><code>post_via_redirect transactions_path,
+  balance_id: balance.id, value: value, type: 'Debit'   # helps to avoid database lock timeouts between threads
+ActiveRecord::Base.connection.reconnect!
+</code></pre>
+
+<p>  end</p>
+
+<p>  it "handles race conditions" do</p>
+
+<pre><code>n = 5
+n.times.collect { |i|
+  balance = balances "balance_#{i}"
+  [
+    Thread.new { credit balance, 100 },
+    Thread.new { debit balance, 40 }
+  ].each {|t| t.join }
+  ActiveRecord::Base.connection.reconnect!              # helps to avoid database lock timeouts
+  balance.reload.value
+}.must_equal [60] * n
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p><code>bash
+  1) Failure:
+UpdateBalance Integration Test#test_0001_handles race conditions [/Users/fabio/workspace/miranti/LockingApp/test/integration/update_balance_test.rb:20]:
+Expected: [60, 60, 60, 60, 60]
+  Actual: [-40, 100, -40, 100, 100]
+</code></p>
+
+<p>É necessário, portanto, adicionar mecanismos para impedir que o saldo seja atualizado simultaneamente por diferentes transações.</p>
+
+<h3>Optimistic Locking</h3>
+
+<p>Para habilitar esta abordagem, basta adicionar uma coluna (<code>lock_version</code>, por default)
+que é utilizada para 'versionar' um registro no banco. Cada vez que o registro é atualizado,
+a coluna é incrementada.</p>
+
+<table class="concurrency_events">
+<tr>
+  <th></th>
+  <th>Versão C</th>
+  <th>C</th>
+  <th>Versão D</th>
+  <th>D</th>
+  <th></th>
+</tr>
+<tr>
+  <th>T0</th>
+  <td>5</td>
+  <td>$0</td>
+  <td>5</td>
+  <td>$0</td>
+  <td>ambas as transações leêm o saldo inicial como $0 e versão 5</td>
+</tr>
+<tr>
+  <th>T1</th>
+  <td>6</td>
+  <td>$100</td>
+  <td>5</td>
+  <td>$0</td>
+  <td>a transação de crédito atualiza o saldo e incrementa a versão</td>
+</tr>
+<tr>
+  <th>T2</th>
+  <td>6</td>
+  <td>$100</td>
+  <td colspan="2" style="color: red; font-weight: bold">Stale</td>
+  <td>
+    quando tenta-se criar o débito, a aplicação percebe que a versão presente no banco já é mais atual
+    que a lida inicialmente pela thread, e lança uma exceção <code>ActiveRecord::StaleObjectError</code>
+  </td>
+</tr>
+<tr>
+  <th>T3</th>
+  <td>6</td>
+  <td colspan="3">$100</td>
+  <td>Débito não executado</td>
+</tr>
+</table>
+
+
+<br />
+
+
+<p>O tratamento do erro fica a cargo da aplicação.</p>
+
+<p>Pode-se adotar uma abordagem 'relaxada', apresentando uma mensagem de erro para o usuário, solicitando
+que repita/confirme a transação:</p>
+
+<p>``` ruby
+  it "handles race conditions raising error" do</p>
+
+<pre><code>n = 5
+# disparar o erro é o comportamento esperado
+assert_raise ActiveRecord::StaleObjectError do
+  n.times.collect { |i|
+    balance = balances "balance_#{i}"
+    [
+      Thread.new { credit balance, 100 },
+      Thread.new { debit balance, 40 }
+    ].each {|t| t.join }
+    ActiveRecord::Base.connection.reconnect!
+    balance.reload.value #.must_equal 60
+    # Balance.find(balance.id).value
+  }.must_equal [60] * n
+end
+</code></pre>
+
+<p>  end
+```</p>
+
+<p>Ou uma abordagem resiliente, obtendo a versão atualizada do saldo e operando sobre este a segunda transação:</p>
+
+<p>```
+  # POST /transactions
+  def create</p>
+
+<pre><code>factor    = params[:type] == 'Debit' ? -1 : 1
+@value    = factor * params[:value].to_f
+@balance  = Balance.find params[:balance_id]
+
+# _version, _value = @balance.lock_version, @balance.value
+
+success   = begin
+              create_transaction
+            rescue ActiveRecord::StaleObjectError   # recover and retry
+              Balance.connection.reconnect!
+              @balance.reload
+              create_transaction
+            end
+
+# log.debug "#{@balance.id} (v#{_version} -&gt; v#{@balance.lock_version}): $#{_value} -&gt; $#{@balance.value}"
+
+if success
+  redirect_to @transaction, notice: 'Transaction was successfully created.'
+else
+  render action: 'new'
+end
+</code></pre>
+
+<p>  end</p>
+
+<p>  private</p>
+
+<pre><code>def create_transaction
+  ActiveRecord::Base.transaction do
+    @transaction = Transaction.create balance: @balance, value: @value
+    if @transaction.valid?
+      @balance.value += @transaction.value
+      @balance.save
+    end
+  end
+end
+</code></pre>
+
+<p>```</p>
+
+<p>``` bash</p>
+
+<h1>Running tests:</h1>
+
+<p>.
+```</p>
+
+<h3>Pessimistic Locking</h3>
+
+<p>Na abordagem pessimista, um determinado registro fica bloqueado, a nível de banco de dados,
+(por exemplo, <code>SELECT ... FOR UPDATE</code>) impedindo que seja alterado por uma transação concorrente.</p>
+
+<p>Existem 3 formas de habilitar esta trava:</p>
+
+<p>a) Diretamente na query:
+<code>ruby
+  Balance.find(id, lock: true)  # deprecated
+</code></p>
+
+<p>b) No objeto:
+<code>ruby
+  balance.lock!  # o objeto é recarregado, aplicando a trava
+  # some stuff...
+  balance.save!
+</code>
+c) Passando um bloco:
+``` ruby
+  balance.with_lock do</p>
+
+<pre><code># some stuff
+</code></pre>
+
+<p>  end
+```</p>
+
+<p>A implementação do controller ficaria mais simples (nenhuma modificação necessária no teste):</p>
+
+<p>``` ruby
+  # POST /transactions
+  def create</p>
+
+<pre><code>factor    = params[:type] == 'Debit' ? -1 : 1
+@value    = factor * params[:value].to_f
+@balance  = Balance.find params[:balance_id]
+
+if create_transaction
+  redirect_to @transaction, notice: 'Transaction was successfully created.'
+else
+  render action: 'new'
+end
+</code></pre>
+
+<p>  end</p>
+
+<p>  private</p>
+
+<pre><code>def create_transaction
+  ActiveRecord::Base.transaction do
+    @transaction = Transaction.create balance: @balance, value: @value
+    if @transaction.valid?
+      @balance.with_lock do
+        @balance.value += @transaction.value
+        @balance.save
+      end
+    end
+  end
+end
+</code></pre>
+
+<p>```</p>
+
+<h3>Considerações Finais</h3>
+
+<p>Apesar de mais simples, a abordagem pessimista aplica travas no banco de dados, sendo suscetível a situações
+de deadlock, ou seja, duas transações bloquearem uma à outra, caso criem dependência circular entre os
+registros que elas travam. Além disso, a implementação da trava depende do banco de dados utilizado.</p>
+
+<p>Na abordagem otimista, nenhum registro é travado (não há risco de deadlock), mas adiciona complexidade à
+aplicação, dado que é necessário adicionar o tratamento para quando se tenta atualizar um objeto defasado (stale).
+Todo o mecanismo de locking é feito pela aplicação, independente do banco de dados utilizado.</p>
+
+<h3>Referências Bibliográficas</h3>
+
+<ul>
+<li><a href="http://api.rubyonrails.org/classes/ActiveRecord/Locking/Optimistic.html">Optimistic Locking</a></li>
+<li><a href="http://api.rubyonrails.org/classes/ActiveRecord/Locking/Pessimistic.html">Pessimistic Locking</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Screencast: Ruby on Rails - How to Learn? - part 1]]></title>
@@ -1301,228 +1626,6 @@ _destroy: false
 
 <p>E assim, concluímos esta série de posts:<p>
 <center><img src="http://mindshare.blog.br/images/2012/09/25/08-working-app.png" /></center>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[MultiModel forms, parte 3: Nested Forms]]></title>
-    <link href="http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms/"/>
-    <updated>2012-08-06T00:00:00-03:00</updated>
-    <id>http://mindshare.blog.br/blog/2012/08/06/multimodel-forms-parte-3-nested-forms</id>
-    <content type="html"><![CDATA[<div class='post'>
-Nos dois primeiros posts desta série, foi mostrado o poder do uso de Nested Models.
-O Rails fornece também view helpers para a construção de views com este recurso.
-<!-- more -->
-Seguem os links dos posts anteriores:
-<ul>
-  <li><a href="/blog/2012/08/01/um-formulario-multiplos-modelos" target="_blank">Parte 1: Nested Models - One-to-One</a></li>
-  <li><a href="/blog/2012/08/05/multimodel-forms-parte-2-one-to-many" target="_blank">Parte 2: Nested Models - One-to-Many</a></li>
-  <li><a href="/blog/2012/08/06/multimodel-forms-parte-3-nested-forms" target="_blank">Parte 3: Nested Forms</a></li>
-  <li><a href="/blog/2012/09/25/multimodel-forms-parte-4-nested-forms-usando-knockout-js"
-      target="_blank">Parte 4: Nested Forms interativos usando Knockout.js</a></li>
-</ul>
-O código desta aplicação de exemplo está disponível neste <a href="https://github.com/fabiolnm/Multi-Model-Forms">repositório Github</a>.
-
-
-<h2>Nested Forms</h2>
-Os view helpers do rails são capazes de gerar markup especial, aderente à notação dos nested models.
-Veja como pode ser reescrito o formulário (criado no passo de scaffold no primeiro post desta série):
-``` ruby app/views/people/_form.html.erb
-<%= form_for(@person) do |f| %>
-  <div class="field">
-    <%= f.label :name %><br />
-    <%= f.text_field :name %>
-  </div>
-
-  <%= f.fields_for :user_account do |acc| %>
-    <div class="field">
-      <%= acc.label :username %><br />
-      <%= acc.text_field :username %>
-    </div>
-    <div class="field">
-      <%= acc.label :password %><br />
-      <%= acc.password_field :password %>
-    </div>
-
-    <%= acc.fields_for :permissions do |p| %>
-      <div class="field">
-        <%= p.label p.object.restricted_area %>
-        <%= p.hidden_field :restricted_area %>
-        <%= p.select :grants,
-          [ "Read-Only", "Read-Write", "Read-Write-Delete" ],
-          include_blank: true %>
-      </div>
-    <% end %>
-  <% end %>
-
-  <div class="actions">
-    <%= f.submit %>
-  </div>
-<% end %>
-```
-<p>Entre na tela de cadastro (http://localhost:3000/people/new), para visualizar um formulário contendo os campos de Person, UserAccount e Permission:</p>
-
-<center><img src="http://mindshare.blog.br/images/2012/08/06/new_person.png" /></center>
-
-<p>Oops. Apenas os campos de Person estão visíveis. Não é difícil conjecturar o porquê. Ao criar um novo objeto Person, ele não possui um user_account, como pode ser confirmado no console:</p>
-
-``` ruby Inspecionando a conta de usuário de uma Pessoa no rails console
-Person.new.user_account
- => nil
-```
-
-É necessário sobrescrever o método Person/user_account, para que retorne um novo objeto quando Person não tiver uma conta de usuário associada:
-``` ruby app/models/person.rb
-def user_account
-  @user_account = super
-  @user_account = build_user_account if @user_account.nil?
-  @user_account
-end
-```
-  <p>Isto é suficiente para habilitar os campos de UserAccount:</p>
-
-  <center><img src="http://mindshare.blog.br/images/2012/08/06/user_account.png" /></center>
-
-  <p>Para exibir os campos referentes aos atributos de Permission, criamos um método UserAccount/permissions_types, que pré-instancia as possíveis opções:</p>
-``` ruby app/models/user_account.rb
-def permissions_types
-  hash = {}
-  permissions.each { |p| hash[p.restricted_area] = p }
-
-  [ "admin", "backups", "logs" ].each { |area|
-    hash[area] = Permission.new restricted_area: area unless hash.has_key? area
-  }
-  hash.values
-end
-```
-
-  <p>Note que as duas primeiras linhas "memorizam" associações previamente salvas,
-    enquanto nas linhas seguintes, são construídos novos objetos apenas para as associações que ainda não estiverem presentes.</p>
-  <p>É necessário modificar o formulário para construir os campos de permissões utilizando este método:</p>
-
-``` ruby
-<%= acc.fields_for :permissions, acc.object.permissions_types do |p| %>
-  <div class="field">
-    <%= p.label p.object.restricted_area %>
-    <%= p.hidden_field :restricted_area %>
-    <%= p.select :grants, [ "Read-Only", "Read-Write", "Read-Write-Delete" ], include_blank: true %>
-  </div>
-<% end %>
-```
-
-  <p>Vejamos como ficou:</p>
-  <center><img src="http://mindshare.blog.br/images/2012/08/06/permissions.png" /></center>
-
-  <p>Agora que os campos já estão presentes no formulário, basta salvar um registro:</p>
-  <center><img src="http://mindshare.blog.br/images/2012/08/06/validation.png" /></center>
-
-  <p>
-    Oops... estamos quase lá... Vamos tentar entender o que aconteceu.
-    Com auxílio do Chrome Developer Tools, podemos analisar os dados que são submetidos com o formulário:
-  </p>
-
-  <center><img src="http://mindshare.blog.br/images/2012/08/06/post_data.png" /></center>
-
-Os view helpers do Rails criam campos com nomes que são adequados à sua forma de processar nested models. Se analisarmos o log do controller, vemos que o request foi convertido para um hash, representando estes parâmetros de forma hierárquica (formatei o log para facilitar sua visualização):<br />
-``` ruby
-Started POST "/people" for 127.0.0.1 at 2012-08-05 22:36:11 -0300
-Connecting to database specified by database.yml
-Processing by PeopleController#create as HTML
-Parameters: {
-  "utf8"=>"✓",
-  "authenticity_token"=>"iTFVyyIwp0w2apXT02s+XN3z6PfOFEuUgZRaZWxPegU=",
-  "person"=>{
-    "name"=>"José da Silva",
-    "user_account_attributes"=>{
-      "username"=>"jsilva",
-      "password"=>"[FILTERED]",
-      "permissions_attributes"=>{
-        "0"=>{
-          "restricted_area"=>"admin",
-          "grants"=>"Read-Only"
-        },
-        "1"=>{
-          "restricted_area"=>"backups",
-          "grants"=>""
-        },
-        "2"=>{
-          "restricted_area"=>"logs",
-          "grants"=>"Read-Write"
-        }
-      }
-    }
-  },
-  "commit"=>"Create Person"
-}
-```
-Faz sentido: o rails tentou criar uma permission com o campo grants em branco, mas este campo é obrigatório (vide a parte 2 desta série). É necessário alguma forma de filtrar de permission_attributes os valores que estiverem com grants em branco. Há: Rails possui essa facilidade:<br />
-``` ruby
-accepts_nested_attributes_for :permissions, allow_destroy: true,
-  reject_if: proc { |attrs|  attrs["grants"].blank? }
-```
-
-  <p>Basta este pequeno ajuste em UserAccount para conseguimos salvar o registro, que na figura abaixo, foi reaberto para edição:</p>
-
-  <center><img src="http://mindshare.blog.br/images/2012/08/06/edit_person.png" /></center>
-
-  <p>
-    É incrível: simplesmente funciona! Tudo bem até aqui, já conseguimos salvar.
-    Mas logo descobrimos que o "brinquedo quebra" se tentar remover uma permissão: tente deixar Logs em branco e salvar.
-    Parece que tudo deu certo, mas ao reabrir para edição, a permissão continua lá.
-  </p>
-
-  <p>
-    Isto ocorre pois, após termos adicionado a cláusula reject_if, as permissões em branco passaram a ser rejeitadas.
-    O Rails não tem mais a oportunidade de processá-las. Além disso, vimos nos posts anteriores que, para remover um nested model, é necessário passar
-    <b style="color: blue;">_destroy: true</b> como um de seus parâmetros.
-  </p>
-
-  Pode-se usar um checkbox para adicionar um atributo _destroy:<br />
-``` ruby
-<%= acc.fields_for :permissions, acc.object.permissions_types do |p| %>
-  <%= p.label p.object.restricted_area %>
-  <%= p.hidden_field :restricted_area %>
-  <%= p.select :grants, [ "Read-Only", "Read-Write", "Read-Write-Delete" ], include_blank: true %>
-  <b><span style="color: blue;"><% unless p.object.new_record? %>
-    <%= p.check_box :_destroy %>
-    <%= p.label :_destroy, 'Remove' %>
-  <% end %></span></b>
-<% end %>
-```
-  <p>O formulário fica com a seguinte aparência:</p>
-
-  <center><img src="http://mindshare.blog.br/images/2012/08/06/destroy.png" /></center>
-
-  <p>
-    E agora, com auxílio do checkbox, conseguimos também remover permissões.
-    Um único formulário, manipulando uma complexa estrutura de dados associados - Person 1 : 1 UserAccount 1 : N Permission.
-  </p>
-
-  <p>
-    Note que não foi necessário adicionar nenhuma lógica no controller para interpretar argumentos do request dos objetos associados.
-    Apesar de termos sido obrigados a adicionar um checkbox para remoção de permissões, não precisamos de nenhuma lógica customizada de
-    data-binding para apresentar as associações na view. Tudo out-of-the-box, prontinho para usar, um bonus-track desta fantástica framework web que é o Rails!
-  </p>
-
-  <p>
-    No quarto e último post desta série, será mostrada "a cereja do bolo": com um pouquinho de JavaScript, jQuery e Knockout.js,
-    tornaremos a adição de permissões mais dinâmica, além de adicionar dinamicamente o atributo _destroy no request, sem precisar de um checkbox.
-  </p>
-
-  <h3>Referências</h3>
-  <ul>
-    <li><a href="http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form"
-        rel="nofollow" target="_blank">http://guides.rubyonrails.org/getting_started.html#building-a-multi-model-form</a></li>
-    <li><a href="http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html"
-        rel="nofollow" target="_blank">http://api.rubyonrails.org/classes/ActiveRecord/NestedAttributes/ClassMethods.html</a></li>
-    <li><a href="http://erikonrails.snowedin.net/?p=267" rel="nofollow" target="_blank">http://erikonrails.snowedin.net/?p=267</a></li>
-    <li><a href="http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes"
-        rel="nofollow" target="_blank">http://archives.ryandaigle.com/articles/2009/2/1/what-s-new-in-edge-rails-nested-attributes</a></li>
-    <li><a href="http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/"
-        rel="nofollow" target="_blank">http://weblog.rubyonrails.org/2009/1/26/nested-model-forms/</a></li>
-  </ul>
-</div>
 
 ]]></content>
   </entry>
