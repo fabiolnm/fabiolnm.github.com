@@ -1,2 +1,14 @@
 // This File is imported last, and will override other styles in the cascade
 // Add styles here to make changes without digging in too much
+
+.concurrency_events {
+  td, th {
+    border: 1px solid gray;
+    min-width: 60px;
+  }
+  th {
+    background-color: #CCC;
+    text-align: center;
+    font-weight: bold;
+  }
+}
