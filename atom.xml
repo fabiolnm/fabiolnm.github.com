@@ -4,7 +4,7 @@
   <title><![CDATA[Mind Share]]></title>
   <link href="http://mindshare.blog.br/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2013-07-15T01:51:04-03:00</updated>
+  <updated>2014-01-05T03:18:04-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -12,6 +12,192 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dependency Injection em Ruby]]></title>
+    <link href="http://mindshare.blog.br/blog/2014/01/05/dependency-injection-em-ruby/"/>
+    <updated>2014-01-05T02:45:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2014/01/05/dependency-injection-em-ruby</id>
+    <content type="html"><![CDATA[<p>O padrão de projeto Dependency Injection se popularizou bastante entre desenvolvedores Java,
+por facilitar o teste de uma classe e seus colaboradores, ao remover dependências fortes
+entre eles. Mas este padrão pode ser globalmente aplicado em outras linguagens? Ou seria
+um indício de um defeito da linguagem?</p>
+
+<!-- more -->
+
+
+<p>Quando trabalhava com Java e tive a oportunidade de me aprofundar na prática de testes,
+DI fornecia uma maneira elegante de manipular os colaboradores de uma classe, tornando
+possível a verificação da maneira como os objetos interagiam entre si.</p>
+
+<p>Um cenário real onde pude aplicar o pattern foi num teste de integração entre sistemas.
+Havia um modelo que era responsável por persistir mídias (fotos / videos) num sistema A,
+e notificar uma API de outro sistema B, para processar aquelas mídias.</p>
+
+<p>Uma implementação sem DI:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">ProcessadorMidiaNoSistemaA</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="n">NotificadorSistemaB</span> <span class="n">notificador</span> <span class="o">=</span> <span class="k">new</span> <span class="n">NotificadorSistemaB</span><span class="o">();</span>  <span class="c1">// (1)</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">processarMidia</span><span class="o">(</span><span class="n">Midia</span> <span class="n">midia</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">persisteMidiaLocalmente</span><span class="o">(</span><span class="n">midia</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">notificador</span><span class="o">.</span><span class="na">envia</span><span class="o">(</span><span class="n">midia</span><span class="o">);</span>                                           <span class="c1">// (2)</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Esta implementação possui dois inconvenientes do ponto de vista de testes:</p>
+
+<ol>
+<li>não é possível, de maneira simples, acessar o colaborador que notifica o sistema B,
+para realizar verificações;</li>
+<li>ao exercitar o método processarMidia, um teste inevitavelmente invocaria o notificador
+real. O impacto para a suíte de testes poderia se refletir em:</li>
+</ol>
+
+
+<p>  2.1. testes mais lentos, caso a notificação seja demorada; ou</p>
+
+<p>  2.2. testes frágeis, caso o sistema externo falhe (por exemplo fique fora do ar durante
+  o teste). Neste caso, o sistema estaria funcionando corretamente, com os comportamentos
+  esperados, mas a suíte quebraria por falhas que não são de sua responsabilidade.</p>
+
+<p>A solução para este cenário, usando Dependency Injection:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">interface</span> <span class="nc">NotificadorSistemaB</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">envia</span><span class="o">(</span><span class="n">Midia</span> <span class="n">midia</span><span class="o">);</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">NotificadorSistemaBImpl</span> <span class="kd">implements</span> <span class="n">NotificadorSistemaB</span> <span class="o">{</span>
+</span><span class='line'>  <span class="c1">// go little horse, go!</span>
+</span><span class='line'><span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">class</span> <span class="nc">ProcessadorMidiaNoSistemaA</span> <span class="o">{</span>
+</span><span class='line'>  <span class="kd">private</span> <span class="n">NotificadorSistemaB</span> <span class="n">notificador</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kd">public</span> <span class="nf">ProcessaMidiaNoSistemaA</span><span class="o">(</span><span class="n">NotificadorSistemaB</span> <span class="n">notificador</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="k">this</span><span class="o">.</span><span class="na">notificador</span> <span class="o">=</span> <span class="n">notificador</span><span class="o">;</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">processarMidia</span><span class="o">(</span><span class="n">Midia</span> <span class="n">midia</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>    <span class="n">persisteMidiaLocalmente</span><span class="o">(</span><span class="n">midia</span><span class="o">);</span>
+</span><span class='line'>    <span class="n">notificador</span><span class="o">.</span><span class="na">envia</span><span class="o">(</span><span class="n">midia</span><span class="o">);</span>
+</span><span class='line'>  <span class="o">}</span>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Com este novo arranjo, um teste para a classe ProcessaMidiaNoSistemaA pode injetar um mock,
+via construtor, tornando:</p>
+
+<ol>
+<li>a classe verificável - o método processarMidia invocou o notificador?</li>
+<li>implementação independente do sistema externo, injetando um notificador que não executasse
+a lógica externa.</li>
+</ol>
+
+
+<p>Do ponto de vista de implementação, DI oferece uma forma de contornar aquilo que pode ser considerado
+um defeito na linguagem Java. Foi necessário criar:</p>
+
+<ol>
+<li>uma interface,</li>
+<li>uma implementação com a lógica de integração daquela interface, e</li>
+<li>um construtor, para tornar a classe testável.</li>
+</ol>
+
+
+<p>Linguagens como Ruby, por sua vez, oferecem meios para tornar o design mais testável, sem a necessidade
+da aplicação de DI:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">class</span> <span class="nc">ProcessadorMidiaNoSistemaA</span>
+</span><span class='line'>  <span class="n">def</span> <span class="nf">processar_midia</span><span class="o">(</span><span class="n">midia</span><span class="o">)</span>
+</span><span class='line'>    <span class="n">persisteMidiaLocalmente</span><span class="o">(</span><span class="n">midia</span><span class="o">)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">notificador</span> <span class="o">=</span> <span class="n">NotificadorSistemaB</span><span class="o">.</span><span class="na">new</span>
+</span><span class='line'>    <span class="n">notificador</span><span class="o">.</span><span class="na">envia</span><span class="o">(</span><span class="n">midia</span><span class="o">)</span>
+</span><span class='line'>  <span class="n">end</span>
+</span><span class='line'><span class="n">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Um teste no RSpec poderia ser assim escrito:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='ruby'><span class='line'><span class="n">describe</span> <span class="no">ProcessadorMidiaNoSistemaA</span> <span class="k">do</span>
+</span><span class='line'>  <span class="n">subject</span> <span class="p">{</span> <span class="no">ProcessadorMidiaNoSistemaA</span><span class="o">.</span><span class="n">new</span> <span class="p">}</span>
+</span><span class='line'>  <span class="n">let</span><span class="p">(</span><span class="ss">:midia</span><span class="p">)</span> <span class="p">{</span> <span class="n">create</span> <span class="ss">:midia</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">it</span> <span class="s2">&quot;notifica sistema B&quot;</span> <span class="k">do</span>
+</span><span class='line'>    <span class="no">NotificadorSistemaB</span><span class="o">.</span><span class="n">any_instance</span><span class="o">.</span><span class="n">should_receive</span><span class="p">(</span><span class="ss">:envia</span><span class="p">)</span><span class="o">.</span><span class="n">with</span><span class="p">(</span><span class="n">midia</span><span class="p">)</span>
+</span><span class='line'>    <span class="n">subject</span><span class="o">.</span><span class="n">processar_midia</span><span class="p">(</span><span class="n">midia</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">end</span>
+</span><span class='line'><span class="k">end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ruby, portanto, não é dependente de Dependency Injection quanto Java o é.</p>
+
+<p>Entretanto, isto não invalida por completo a aplicação do pattern DI em alguns
+cenários, caso o programador deseje desenhar construtores mais rígidos em suas
+classes. Neste caso, porém, trata-se de decisão do programador, não de contornar
+uma limitação da linguagem.</p>
+
+<h3>Referências Bibliográficas</h3>
+
+<ul>
+<li><a href="http://david.heinemeierhansson.com/2012/dependency-injection-is-not-a-virtue.html">Dependency Injection is not a virtue</a></li>
+<li><a href="http://c2.com/cgi/wiki?AreDesignPatternsMissingLanguageFeatures">Are Design Patterns Missing Language Features?</a></li>
+<li><a href="http://www.codinghorror.com/blog/2007/07/rethinking-design-patterns.html">Rethinking Design Patterns</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Screencast: Ruby on Rails - How to Learn? - part 1]]></title>
@@ -131,7 +317,7 @@
   <entry>
     <title type="html"><![CDATA[Especificações de Views com MiniTest]]></title>
     <link href="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/"/>
-    <updated>2012-11-25T19:30:00-02:00</updated>
+    <updated>2012-11-25T19:30:00-03:00</updated>
     <id>http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest</id>
     <content type="html"><![CDATA[<p>As Views representam a Interface do Usuário de uma aplicação. Como tal, ficam sujeitas a frequentes mudanças, orientadas por
 preocupações de usabilidade, de estética ou mesmo de evolução de requisitos.</p>
@@ -797,7 +983,7 @@ e que fornece o método rendered</a></li>
   <entry>
     <title type="html"><![CDATA[Introdução à MiniTest]]></title>
     <link href="http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest/"/>
-    <updated>2012-11-21T20:00:00-02:00</updated>
+    <updated>2012-11-21T20:00:00-03:00</updated>
     <id>http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest</id>
     <content type="html"><![CDATA[<p>O framework Ruby-on-Rails possui muitas facilidades para a escrita de testes de aplicações web.
 Historicamente, a API Test::Unit provê os recursos básicos, e muitas outras gems surgiram

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: TDD | Mind Share]]></title>
   <link href="http://mindshare.blog.br/blog/categories/tdd/atom.xml" rel="self"/>
   <link href="http://mindshare.blog.br/"/>
-  <updated>2013-07-15T01:51:04-03:00</updated>
+  <updated>2014-01-05T03:18:04-03:00</updated>
   <id>http://mindshare.blog.br/</id>
   <author>
     <name><![CDATA[Fábio L N Miranda]]></name>
@@ -16,7 +16,7 @@
   <entry>
     <title type="html"><![CDATA[Especificações de Views com MiniTest]]></title>
     <link href="http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest/"/>
-    <updated>2012-11-25T19:30:00-02:00</updated>
+    <updated>2012-11-25T19:30:00-03:00</updated>
     <id>http://mindshare.blog.br/blog/2012/11/25/especificacoes-de-views-com-minitest</id>
     <content type="html"><![CDATA[<p>As Views representam a Interface do Usuário de uma aplicação. Como tal, ficam sujeitas a frequentes mudanças, orientadas por
 preocupações de usabilidade, de estética ou mesmo de evolução de requisitos.</p>
@@ -538,7 +538,7 @@ e que fornece o método rendered</a></li>
   <entry>
     <title type="html"><![CDATA[Introdução à MiniTest]]></title>
     <link href="http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest/"/>
-    <updated>2012-11-21T20:00:00-02:00</updated>
+    <updated>2012-11-21T20:00:00-03:00</updated>
     <id>http://mindshare.blog.br/blog/2012/11/21/introducao-a-minitest</id>
     <content type="html"><![CDATA[<p>O framework Ruby-on-Rails possui muitas facilidades para a escrita de testes de aplicações web.
 Historicamente, a API Test::Unit provê os recursos básicos, e muitas outras gems surgiram

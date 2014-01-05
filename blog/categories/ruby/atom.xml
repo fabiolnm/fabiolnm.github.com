@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Ruby | Mind Share]]></title>
+  <link href="http://mindshare.blog.br/blog/categories/ruby/atom.xml" rel="self"/>
+  <link href="http://mindshare.blog.br/"/>
+  <updated>2014-01-05T03:18:04-03:00</updated>
+  <id>http://mindshare.blog.br/</id>
+  <author>
+    <name><![CDATA[Fábio L N Miranda]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Dependency Injection em Ruby]]></title>
+    <link href="http://mindshare.blog.br/blog/2014/01/05/dependency-injection-em-ruby/"/>
+    <updated>2014-01-05T02:45:00-03:00</updated>
+    <id>http://mindshare.blog.br/blog/2014/01/05/dependency-injection-em-ruby</id>
+    <content type="html"><![CDATA[<p>O padrão de projeto Dependency Injection se popularizou bastante entre desenvolvedores Java,
+por facilitar o teste de uma classe e seus colaboradores, ao remover dependências fortes
+entre eles. Mas este padrão pode ser globalmente aplicado em outras linguagens? Ou seria
+um indício de um defeito da linguagem?</p>
+
+<!-- more -->
+
+
+<p>Quando trabalhava com Java e tive a oportunidade de me aprofundar na prática de testes,
+DI fornecia uma maneira elegante de manipular os colaboradores de uma classe, tornando
+possível a verificação da maneira como os objetos interagiam entre si.</p>
+
+<p>Um cenário real onde pude aplicar o pattern foi num teste de integração entre sistemas.
+Havia um modelo que era responsável por persistir mídias (fotos / videos) num sistema A,
+e notificar uma API de outro sistema B, para processar aquelas mídias.</p>
+
+<p>Uma implementação sem DI:</p>
+
+<p>``` java
+class ProcessadorMidiaNoSistemaA {
+  private NotificadorSistemaB notificador = new NotificadorSistemaB();  // (1)</p>
+
+<p>  void processarMidia(Midia midia) {</p>
+
+<pre><code>persisteMidiaLocalmente(midia);
+notificador.envia(midia);                                           // (2)
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>Esta implementação possui dois inconvenientes do ponto de vista de testes:</p>
+
+<ol>
+<li>não é possível, de maneira simples, acessar o colaborador que notifica o sistema B,
+para realizar verificações;</li>
+<li>ao exercitar o método processarMidia, um teste inevitavelmente invocaria o notificador
+real. O impacto para a suíte de testes poderia se refletir em:</li>
+</ol>
+
+
+<p>  2.1. testes mais lentos, caso a notificação seja demorada; ou</p>
+
+<p>  2.2. testes frágeis, caso o sistema externo falhe (por exemplo fique fora do ar durante
+  o teste). Neste caso, o sistema estaria funcionando corretamente, com os comportamentos
+  esperados, mas a suíte quebraria por falhas que não são de sua responsabilidade.</p>
+
+<p>A solução para este cenário, usando Dependency Injection:</p>
+
+<p>``` java
+public interface NotificadorSistemaB {
+  void envia(Midia midia);
+}</p>
+
+<p>public class NotificadorSistemaBImpl implements NotificadorSistemaB {
+  // go little horse, go!
+}</p>
+
+<p>class ProcessadorMidiaNoSistemaA {
+  private NotificadorSistemaB notificador;</p>
+
+<p>  public ProcessaMidiaNoSistemaA(NotificadorSistemaB notificador) {</p>
+
+<pre><code>this.notificador = notificador;
+</code></pre>
+
+<p>  }</p>
+
+<p>  void processarMidia(Midia midia) {</p>
+
+<pre><code>persisteMidiaLocalmente(midia);
+notificador.envia(midia);
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>Com este novo arranjo, um teste para a classe ProcessaMidiaNoSistemaA pode injetar um mock,
+via construtor, tornando:</p>
+
+<ol>
+<li>a classe verificável - o método processarMidia invocou o notificador?</li>
+<li>implementação independente do sistema externo, injetando um notificador que não executasse
+a lógica externa.</li>
+</ol>
+
+
+<p>Do ponto de vista de implementação, DI oferece uma forma de contornar aquilo que pode ser considerado
+um defeito na linguagem Java. Foi necessário criar:</p>
+
+<ol>
+<li>uma interface,</li>
+<li>uma implementação com a lógica de integração daquela interface, e</li>
+<li>um construtor, para tornar a classe testável.</li>
+</ol>
+
+
+<p>Linguagens como Ruby, por sua vez, oferecem meios para tornar o design mais testável, sem a necessidade
+da aplicação de DI:</p>
+
+<p>``` java
+class ProcessadorMidiaNoSistemaA
+  def processar_midia(midia)</p>
+
+<pre><code>persisteMidiaLocalmente(midia)
+
+notificador = NotificadorSistemaB.new
+notificador.envia(midia)
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p>Um teste no RSpec poderia ser assim escrito:</p>
+
+<p>``` ruby
+describe ProcessadorMidiaNoSistemaA do
+  subject { ProcessadorMidiaNoSistemaA.new }
+  let(:midia) { create :midia }</p>
+
+<p>  it "notifica sistema B" do</p>
+
+<pre><code>NotificadorSistemaB.any_instance.should_receive(:envia).with(midia)
+subject.processar_midia(midia)
+</code></pre>
+
+<p>  end
+end
+```</p>
+
+<p>Ruby, portanto, não é dependente de Dependency Injection quanto Java o é.</p>
+
+<p>Entretanto, isto não invalida por completo a aplicação do pattern DI em alguns
+cenários, caso o programador deseje desenhar construtores mais rígidos em suas
+classes. Neste caso, porém, trata-se de decisão do programador, não de contornar
+uma limitação da linguagem.</p>
+
+<h3>Referências Bibliográficas</h3>
+
+<ul>
+<li><a href="http://david.heinemeierhansson.com/2012/dependency-injection-is-not-a-virtue.html">Dependency Injection is not a virtue</a></li>
+<li><a href="http://c2.com/cgi/wiki?AreDesignPatternsMissingLanguageFeatures">Are Design Patterns Missing Language Features?</a></li>
+<li><a href="http://www.codinghorror.com/blog/2007/07/rethinking-design-patterns.html">Rethinking Design Patterns</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+</feed>
